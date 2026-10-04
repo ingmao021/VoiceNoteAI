@@ -1,0 +1,33 @@
+<resources>
+    <string name="app_name">VoiceNoteAI</string>
+
+    <!-- Textos de pantalla en español (es-CO). Máximo tres palabras por mensaje de error de captura (PRD §7.4). -->
+    <string name="idle_hint">Toca para hablar</string>
+    <string name="idle_record_description">Grabar nota</string>
+    <string name="recording_listening">Escuchando…</string>
+    <string name="recording_stop_description">Detener grabación</string>
+    <string name="processing_description">Procesando</string>
+    <string name="processing_stage_processing">Procesando</string>
+    <string name="processing_stage_almost_done">Casi listo…</string>
+    <string name="processing_stage_waking_server">Despertando el servidor</string>
+    <string name="success_saved">Guardado</string>
+    <string name="success_saved_description">Nota guardada</string>
+
+    <string name="action_retry">Reintentar</string>
+    <string name="action_settings">Ajustes</string>
+    <string name="action_back">Volver</string>
+
+    <string name="error_capture_permission_denied">Necesito el micrófono</string>
+    <string name="error_capture_microphone_busy">Micrófono ocupado</string>
+    <string name="error_capture_nothing_heard">No escuché nada</string>
+    <string name="error_capture_not_understood">No pude entender</string>
+    <string name="error_capture_language_unavailable">Idioma no disponible</string>
+    <string name="error_capture_no_connection">Sin conexión</string>
+    <string name="error_capture_recognizer_unavailable">Reconocedor no disponible</string>
+    <string name="error_capture_low_battery">Batería muy baja</string>
+
+    <string name="error_submission_no_connection">Sin conexión</string>
+    <string name="error_submission_relink_account">Vuelve a conectar tu cuenta</string>
+    <string name="error_submission_not_saved">No se pudo guardar</string>
+    <string name="error_submission_timed_out">Tardó demasiado</string>
+</resources>
