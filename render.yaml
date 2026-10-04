@@ -1,0 +1,33 @@
+# Blueprint de Render para el backend (PRD §2.2). Capa gratuita: el servicio se duerme tras
+# 15 min sin tráfico; el reloj lo despierta con el ping de calentamiento a /v1/health (§3.5).
+services:
+  - type: web
+    name: voicenoteai-backend
+    runtime: node
+    plan: free
+    region: oregon
+    branch: develop
+    rootDir: backend
+    # tsc y los tipos son devDependencies: se instalan aunque el entorno sea de producción.
+    buildCommand: npm ci --include=dev && npm run build
+    startCommand: npm start
+    healthCheckPath: /v1/health
+    autoDeployTrigger: commit
+    envVars:
+      - key: NODE_VERSION
+        value: "24"
+      - key: TIME_ZONE
+        value: America/Bogota
+      - key: GEMINI_MODEL
+        value: gemini-3.5-flash-lite
+      # Secretos: se rellenan en el panel de Render, nunca en el repositorio (RN-04).
+      - key: DEV_API_TOKEN
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: GOOGLE_REFRESH_TOKEN
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
