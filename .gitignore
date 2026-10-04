@@ -1,0 +1,22 @@
+# --- Android / Gradle (wear/) ---
+.gradle/
+build/
+.idea/
+*.iml
+local.properties
+captures/
+.externalNativeBuild/
+.cxx/
+.kotlin/
+
+# --- Node (backend/) ---
+node_modules/
+dist/
+.env
+.env.*
+!.env.example
+
+# --- OS ---
+.DS_Store
+Thumbs.db
+desktop.ini
