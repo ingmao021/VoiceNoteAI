@@ -67,9 +67,11 @@ import com.voicenoteai.wear.presentation.theme.VoiceNoteAITheme
  * el parche siempre en el mismo sitio y el texto debajo, dentro del cuadrado inscrito.
  */
 private class Layout(side: Dp) {
-    val patch: Dp = side * 0.49f
-    val patchTop: Dp = side * 0.175f
-    val textTop: Dp = side * 0.69f
+    // Parche y texto suben respecto al diseño original para que el texto secundario (TOCA PARA …) no
+    // caiga en la zona donde la curva de la pantalla lo estrecha.
+    val patch: Dp = side * 0.45f
+    val patchTop: Dp = side * 0.13f
+    val textTop: Dp = side * 0.62f
     val textWidth: Dp = side * 0.72f
 
     /** Breakpoint de 225 dp (PRD §7.7). */
@@ -232,16 +234,7 @@ private fun ProcessingContent(layout: Layout, stage: ProcessingStage) {
         layout,
         patch = {
             FurPatch(R.drawable.patch_processing, layout.patch) {
-                CircularProgressIndicator(
-                    modifier = Modifier
-                        .size(layout.patch * 0.5f)
-                        .semantics { contentDescription = description },
-                    colors = ProgressIndicatorDefaults.colors(
-                        indicatorColor = FurPalette.Thread,
-                        trackColor = FurPalette.Thread.copy(alpha = 0.25f),
-                    ),
-                    strokeWidth = 5.dp,
-                )
+                CaterpillarSpinner(description, Modifier.size(layout.patch))
             }
         },
         text = { StatusText(stringResource(stage.textRes), layout.primarySp, maxLines = 2) },

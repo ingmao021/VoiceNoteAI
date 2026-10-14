@@ -127,6 +127,14 @@ def remove_microphone(crop):
                     fpx[x, y] = hit
                     break
     crop.paste(filler, (0, 0), mask.filter(ImageFilter.GaussianBlur(5)))
+    # En el centro ningún ángulo sirve y la rotación deja un remolino: se tapa con un trozo de felpa limpia
+    # del lado izquierdo del disco, girado 90° para que el pelo siga la misma dirección que alrededor.
+    patch_radius = int(crop.width * 0.17)
+    sx = cx - int(crop.width * 0.29)
+    clean = crop.crop((sx - patch_radius, cy - patch_radius, sx + patch_radius, cy + patch_radius))
+    clean = clean.rotate(-90)
+    feather = circle_mask(clean.size, (patch_radius, patch_radius), patch_radius - 14, 10)
+    crop.paste(clean, (cx - patch_radius, cy - patch_radius), feather)
     return crop
 
 
