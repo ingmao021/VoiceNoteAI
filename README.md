@@ -144,7 +144,7 @@ La build de **debug** permite HTTP sin cifrar solo hacia `10.0.2.2` y `localhost
 
 ### Render
 
-`render.yaml` describe el servicio: plan gratuito, rama `develop`, raíz `backend/`. Los secretos (`DEV_API_TOKEN`,
+`render.yaml` describe el servicio: plan gratuito, rama `main`, raíz `backend/`. Los secretos (`DEV_API_TOKEN`,
 `GOOGLE_*`, `GEMINI_API_KEY`) se rellenan en el panel de Render, nunca en el repositorio. El plan gratuito duerme el
 servicio tras 15 min sin tráfico; la app lo despierta con `GET /v1/health` al abrirse.
 
@@ -284,7 +284,8 @@ infraestructura se conecta en un único punto de composición.
 
 ## Contribución
 
-1. Crea una rama desde `develop`: `feature/<descripción>` o `fix/<descripción>`. `main` recibe solo versiones estables.
+1. Crea una rama desde `develop`: `feature/<descripción>` o `fix/<descripción>`. `main` es la rama por defecto y la de
+   producción: Render despliega el backend desde ella. Solo recibe versiones estables, fusionando `develop`.
 2. Escribe los mensajes de commit con [Conventional Commits](https://www.conventionalcommits.org/es/):
    `feat(wear): …`, `fix(backend): …`, `test: …`, `docs: …`.
 3. Antes de abrir el pull request, todo debe pasar:

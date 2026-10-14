@@ -6,7 +6,7 @@ services:
     runtime: node
     plan: free
     region: oregon
-    branch: develop
+    branch: main
     rootDir: backend
     # tsc y los tipos son devDependencies: se instalan aunque el entorno sea de producción.
     buildCommand: npm ci --include=dev && npm run build
