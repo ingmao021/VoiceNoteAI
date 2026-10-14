@@ -16,8 +16,6 @@ class SystemDictationContract : ActivityResultContract<Unit, String?>() {
     override fun createIntent(context: Context, input: Unit) = dictationIntent()
 
     override fun parseResult(resultCode: Int, intent: Intent?): String? {
-        android.util.Log.i("VoiceNoteAI.DEBUG", "resultCode=$resultCode extras=${intent?.extras?.keySet()} clip=${intent?.clipData} " +
-            "remote=${intent?.let { androidx.core.app.RemoteInput.getResultsFromIntent(it)?.keySet() }}")
         if (resultCode != Activity.RESULT_OK) return null
         return intent
             ?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)

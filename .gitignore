@@ -4,6 +4,8 @@ build/
 .idea/
 *.iml
 local.properties
+*.jks
+*.keystore
 captures/
 .externalNativeBuild/
 .cxx/
