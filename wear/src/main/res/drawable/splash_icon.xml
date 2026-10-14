@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Icono de la app en la pantalla de inicio: círculo azul y, encima, el primer plano del icono
+<!-- Icono de la app en la pantalla de inicio: círculo gris y, encima, el primer plano del icono
      adaptativo, cuyo contenido ocupa los 2/3 centrales (por eso 72 dp sobre un círculo de 48 dp). -->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
     <item

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Primer plano rasterizado de wear/src/source/icon/icon.svg (el SVG lleva imágenes PNG
-     incrustadas, no admite VectorDrawable). Sin capa monocroma: el robot a color se vería como una mancha. -->
+<!-- Primer plano: el círculo de wear/src/source/icon/icon.png escalado a los 72 dp visibles
+     (es un PNG, no admite VectorDrawable). Sin capa monocroma: el robot a color se vería como una mancha. -->
 <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
     <background android:drawable="@color/ic_launcher_background" />
     <foreground android:drawable="@drawable/ic_launcher_foreground" />
