@@ -33,18 +33,32 @@ android {
         buildConfigField("String", "DEV_API_TOKEN", "\"${localProperty("voicenoteai.devApiToken", "")}\"")
     }
 
+    // Firma de release desde local.properties (voicenoteai.keystore.*). Sin keystore se firma con la
+    // clave de debug: basta para instalar en el reloj propio por adb (ver README → «Reloj físico»).
+    val keystorePath = localProperty("voicenoteai.keystore.path", "")
+    signingConfigs {
+        if (keystorePath.isNotEmpty()) {
+            create("release") {
+                storeFile = rootProject.file(keystorePath)
+                storePassword = localProperty("voicenoteai.keystore.password", "")
+                keyAlias = localProperty("voicenoteai.keystore.alias", "")
+                keyPassword = localProperty("voicenoteai.keystore.keyPassword", "")
+            }
+        }
+    }
+
     buildTypes {
         release {
             optimization {
                 enable = true
             }
+            signingConfig = signingConfigs.findByName("release") ?: signingConfigs.getByName("debug")
         }
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
-    useLibrary("wear-sdk")
     // Las clases bajo prueba registran con android.util.Log; en la JVM sus métodos devuelven 0.
     testOptions {
         unitTests.isReturnDefaultValues = true
@@ -78,8 +92,5 @@ dependencies {
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.turbine)
     testImplementation(libs.ktor.client.mock)
-    androidTestImplementation(platform(libs.compose.bom))
-    androidTestImplementation(libs.ui.test.junit4)
-    debugImplementation(libs.ui.test.manifest)
     debugImplementation(libs.ui.tooling)
 }

@@ -25,19 +25,22 @@ enum class ProcessingStage(@param:StringRes val textRes: Int, val fromMs: Long) 
     WAKING_SERVER(R.string.processing_stage_waking_server, 10_000),
 }
 
-/** Qué hace el botón de ERROR. */
-enum class ErrorAction(@param:StringRes val labelRes: Int) {
+/**
+ * Qué hace el parche de ERROR al tocarlo. [labelRes] es su descripción para TalkBack y [hintRes] el
+ * texto `TOCA PARA …` que se muestra debajo del mensaje.
+ */
+enum class ErrorAction(@param:StringRes val labelRes: Int, @param:StringRes val hintRes: Int) {
     /** Reenvía el texto conservado: el usuario no vuelve a hablar (regla transversal de §5). */
-    RESEND(R.string.action_retry),
+    RESEND(R.string.action_retry, R.string.hint_retry),
 
     /** Error de captura: no hay texto que conservar, así que se vuelve a escuchar. */
-    SPEAK_AGAIN(R.string.action_retry),
+    SPEAK_AGAIN(R.string.action_retry, R.string.hint_retry),
 
     /** FA-02: permiso denegado permanentemente. */
-    OPEN_SETTINGS(R.string.action_settings),
+    OPEN_SETTINGS(R.string.action_settings, R.string.hint_settings),
 
     /** Errores sin reintento: vuelve a INICIAL. */
-    GO_BACK(R.string.action_back),
+    GO_BACK(R.string.action_back, R.string.hint_back),
 }
 
 /** Patrones hápticos distintos para usar el reloj sin mirarlo (PRD §7.6). */

@@ -82,9 +82,9 @@ fun NoteRoute(viewModel: NoteViewModel, onRecordingChanged: (Boolean) -> Unit) {
     )
 }
 
+/** [context] es la actividad (LocalContext), así que no hace falta `FLAG_ACTIVITY_NEW_TASK` (WearRecents). */
 private fun openAppSettings(context: Context) {
     val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", context.packageName, null))
-        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
     runCatching { context.startActivity(intent) }
         .onFailure { Log.w(TAG, "Could not open the app settings", it) }
 }
