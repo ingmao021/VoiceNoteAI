@@ -1,6 +1,5 @@
 package com.voicenoteai.wear.presentation.note
 
-import android.view.HapticFeedbackConstants
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
@@ -12,86 +11,78 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathMeasure
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.graphics.drawscope.translate
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.liveRegion
-import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.lerp
+import androidx.compose.ui.unit.min
 import androidx.compose.ui.unit.sp
-import androidx.wear.compose.material3.Button
-import androidx.wear.compose.material3.ButtonDefaults
 import androidx.wear.compose.material3.CircularProgressIndicator
-import androidx.wear.compose.material3.Icon
 import androidx.wear.compose.material3.ProgressIndicatorDefaults
 import androidx.wear.compose.material3.Text
 import androidx.wear.compose.ui.tooling.preview.WearPreviewDevices
 import androidx.wear.compose.ui.tooling.preview.WearPreviewFontScales
 import com.voicenoteai.wear.R
-import com.voicenoteai.wear.presentation.theme.AppColors
 import com.voicenoteai.wear.presentation.theme.AppIcons
+import com.voicenoteai.wear.presentation.theme.DisplayFont
+import com.voicenoteai.wear.presentation.theme.FurPalette
 import com.voicenoteai.wear.presentation.theme.VoiceNoteAITheme
 
-/** Medidas que cambian en el breakpoint de 225 dp (PRD §7.7). */
-private data class Dimensions(val large: Boolean) {
-    val button: Dp = if (large) 112.dp else 96.dp
+/**
+ * Composición común a los cinco estados, como fracción del lado de la pantalla (skill `wear-ui-ux`, §2):
+ * el parche siempre en el mismo sitio y el texto debajo, dentro del cuadrado inscrito.
+ */
+private class Layout(side: Dp) {
+    val patch: Dp = side * 0.49f
+    val patchTop: Dp = side * 0.175f
+    val textTop: Dp = side * 0.69f
+    val textWidth: Dp = side * 0.72f
 
-    /** El anillo y el botón de detener crecen en la misma proporción que el botón principal. */
-    val scale: Float = button / 96.dp
-    val titleSp: TextUnit = if (large) 16.sp else 14.sp
-    val titleLines: Int = if (large) 3 else 2
+    /** Breakpoint de 225 dp (PRD §7.7). */
+    private val large = side >= 225.dp
+    val primarySp: TextUnit = if (large) 16.sp else 14.sp
+    val secondarySp: TextUnit = if (large) 12.sp else 11.sp
 }
-
-private const val MARGIN = 0.052f
-
-/** Fracción del ancho que ocupa el texto: el lado del cuadrado inscrito, para que la curvatura no lo corte. */
-private const val TEXT_WIDTH_FRACTION = 0.72f
 
 /**
  * La única pantalla de la app (PRD §7.5). Sin estado propio: lo recibe del [NoteViewModel].
  *
- * [onMainButton] es el toque del botón central (iniciar en INICIAL, detener en GRABANDO);
- * [onErrorAction] es el botón de ERROR.
+ * [onMainButton] es el toque del parche en INICIAL (grabar) y GRABANDO (detener); [onErrorAction] es
+ * el toque del parche en ERROR.
  */
 @Composable
 fun NoteScreen(
@@ -103,52 +94,78 @@ fun NoteScreen(
     BoxWithConstraints(
         modifier = modifier
             .fillMaxSize()
-            .background(AppColors.Background),
-        contentAlignment = Alignment.Center,
+            // En pantallas cuadradas las esquinas quedan fuera del fondo redondo.
+            .background(FurPalette.Base),
     ) {
-        val dimensions = Dimensions(large = maxWidth >= 225.dp)
-        val textWidth = maxWidth * TEXT_WIDTH_FRACTION
+        val layout = Layout(min(maxWidth, maxHeight))
+        Image(
+            painterResource(R.drawable.fur_background),
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.fillMaxSize(),
+        )
         AnimatedContent(
             targetState = state,
             // Solo cambiar de estado anima; los cambios dentro de un estado (nivel, etapa) no.
             contentKey = { it::class },
             transitionSpec = { fadeIn(tween(200)) togetherWith fadeOut(tween(150)) },
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(maxWidth * MARGIN),
-            contentAlignment = Alignment.Center,
+            modifier = Modifier.fillMaxSize(),
             label = "state",
         ) { current ->
             when (current) {
-                is NoteUiState.Idle -> IdleContent(dimensions, current.starting, onMainButton)
-                is NoteUiState.Recording -> RecordingContent(dimensions, current, onMainButton)
-                is NoteUiState.Processing -> ProcessingContent(current.stage, textWidth)
-                is NoteUiState.Success -> SuccessContent(dimensions, current.title, textWidth)
-                is NoteUiState.Error -> ErrorContent(current, textWidth, onErrorAction)
+                is NoteUiState.Idle -> IdleContent(layout, current.starting, onMainButton)
+                is NoteUiState.Recording -> RecordingContent(layout, current, onMainButton)
+                is NoteUiState.Processing -> ProcessingContent(layout, current.stage)
+                is NoteUiState.Success -> SuccessContent(layout, current.title)
+                is NoteUiState.Error -> ErrorContent(layout, current, onErrorAction)
             }
         }
     }
 }
 
+/** Coloca el parche y el bloque de texto en sus posiciones fijas; [behind] queda debajo de ambos. */
 @Composable
-private fun IdleContent(dimensions: Dimensions, starting: Boolean, onMainButton: () -> Unit) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        CircularButton(
-            diameter = dimensions.button,
-            description = stringResource(R.string.idle_record_description),
-            onClick = onMainButton,
-            enabled = !starting,
-            modifier = Modifier.border(2.dp, AppColors.Idle, CircleShape),
-        ) {
-            Icon(AppIcons.Microphone, contentDescription = null, tint = AppColors.Idle, modifier = Modifier.size(40.dp))
-        }
-        Spacer(Modifier.height(16.dp))
-        StatusText(stringResource(R.string.idle_hint), 12.sp, AppColors.TextSecondary)
+private fun StateLayout(
+    layout: Layout,
+    patch: @Composable () -> Unit,
+    text: @Composable ColumnScope.() -> Unit,
+    behind: @Composable BoxScope.() -> Unit = {},
+) {
+    Box(Modifier.fillMaxSize()) {
+        behind()
+        Box(Modifier.align(Alignment.TopCenter).padding(top = layout.patchTop)) { patch() }
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .padding(top = layout.textTop)
+                .widthIn(max = layout.textWidth),
+            content = text,
+        )
     }
 }
 
 @Composable
-private fun RecordingContent(dimensions: Dimensions, state: NoteUiState.Recording, onMainButton: () -> Unit) {
+private fun IdleContent(layout: Layout, starting: Boolean, onMainButton: () -> Unit) {
+    StateLayout(
+        layout,
+        patch = {
+            // El micrófono bordado viene en la imagen, tal cual el diseño.
+            FurPatch(
+                R.drawable.patch_idle,
+                layout.patch,
+                onClick = onMainButton,
+                description = stringResource(R.string.idle_record_description),
+                enabled = !starting,
+            )
+        },
+        text = { StatusText(stringResource(R.string.idle_hint), layout.primarySp) },
+    )
+}
+
+@Composable
+private fun RecordingContent(layout: Layout, state: NoteUiState.Recording, onMainButton: () -> Unit) {
     // Arco del borde: se completa en los 60 s de la guarda. Arranca al entrar en GRABANDO, que es
     // cuando el ViewModel arma la guarda (onReadyForSpeech).
     val progress = remember { Animatable(0f) }
@@ -161,181 +178,159 @@ private fun RecordingContent(dimensions: Dimensions, state: NoteUiState.Recordin
         animationSpec = spring(stiffness = Spring.StiffnessMedium),
         label = "level",
     )
+    val ringMax = layout.patch * 1.22f
 
-    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        CircularProgressIndicator(
-            progress = { progress.value },
-            modifier = Modifier.fillMaxSize(),
-            colors = ProgressIndicatorDefaults.colors(
-                indicatorColor = AppColors.Recording,
-                trackColor = AppColors.Recording.copy(alpha = 0.15f),
-            ),
-            strokeWidth = 3.dp,
-        )
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            val ringMax = 140.dp * dimensions.scale
-            Box(Modifier.size(ringMax), contentAlignment = Alignment.Center) {
-                VoiceRing(level, min = 100.dp * dimensions.scale, max = ringMax)
-                CircularButton(
-                    diameter = 75.dp * dimensions.scale,
-                    description = stringResource(R.string.recording_stop_description),
-                    onClick = onMainButton,
-                    modifier = Modifier.background(AppColors.Recording, CircleShape),
-                ) {
-                    Icon(AppIcons.Stop, contentDescription = null, tint = AppColors.Background, modifier = Modifier.size(32.dp))
-                }
+    StateLayout(
+        layout,
+        behind = {
+            CircularProgressIndicator(
+                progress = { progress.value },
+                modifier = Modifier.fillMaxSize(),
+                colors = ProgressIndicatorDefaults.colors(
+                    indicatorColor = FurPalette.Recording,
+                    trackColor = FurPalette.Ink.copy(alpha = 0.1f),
+                ),
+                strokeWidth = 4.dp,
+            )
+            VoiceRing(
+                level,
+                min = layout.patch,
+                max = ringMax,
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = layout.patchTop - (ringMax - layout.patch) / 2),
+            )
+        },
+        patch = {
+            FurPatch(
+                R.drawable.patch_recording,
+                layout.patch,
+                onClick = onMainButton,
+                description = stringResource(R.string.recording_stop_description),
+            ) {
+                ThreadIcon(AppIcons.Stop, layout.patch * 0.4f)
             }
-            Spacer(Modifier.height(4.dp))
-            StatusText(stringResource(R.string.recording_listening), 12.sp, AppColors.Error)
-        }
-    }
+        },
+        text = { StatusText(stringResource(R.string.recording_listening), layout.primarySp) },
+    )
 }
 
-/** Círculo concéntrico cuyo diámetro sigue la amplitud real de la voz (PRD §7.4, CA-02). */
+/** Halo rojo tras el parche cuyo diámetro sigue la amplitud real de la voz (PRD §7.4, CA-02). */
 @Composable
-private fun VoiceRing(level: Float, min: Dp, max: Dp) {
-    Canvas(Modifier.size(max)) {
+private fun VoiceRing(level: Float, min: Dp, max: Dp, modifier: Modifier = Modifier) {
+    Canvas(modifier.size(max)) {
         val radius = lerp(min, max, level).toPx() / 2
-        drawCircle(AppColors.Recording.copy(alpha = 0.18f + 0.22f * level), radius)
-        drawCircle(AppColors.Recording.copy(alpha = 0.6f), radius, style = Stroke(2.dp.toPx()))
+        drawCircle(FurPalette.Recording.copy(alpha = 0.15f + 0.2f * level), radius)
+        drawCircle(FurPalette.Recording.copy(alpha = 0.5f), radius, style = Stroke(2.dp.toPx()))
     }
 }
 
 @Composable
-private fun ProcessingContent(stage: ProcessingStage, textWidth: Dp) {
+private fun ProcessingContent(layout: Layout, stage: ProcessingStage) {
     val description = stringResource(R.string.processing_description)
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        CircularProgressIndicator(
-            modifier = Modifier
-                .size(72.dp)
-                .semantics { contentDescription = description },
-            colors = ProgressIndicatorDefaults.colors(
-                indicatorColor = AppColors.Processing,
-                trackColor = Color.Transparent,
-            ),
-            strokeWidth = 4.dp,
-        )
-        Spacer(Modifier.height(12.dp))
-        StatusText(stringResource(stage.textRes), 14.sp, AppColors.Processing, Modifier.widthIn(max = textWidth), maxLines = 2)
-    }
+    StateLayout(
+        layout,
+        patch = {
+            FurPatch(R.drawable.patch_processing, layout.patch) {
+                CircularProgressIndicator(
+                    modifier = Modifier
+                        .size(layout.patch * 0.5f)
+                        .semantics { contentDescription = description },
+                    colors = ProgressIndicatorDefaults.colors(
+                        indicatorColor = FurPalette.Thread,
+                        trackColor = FurPalette.Thread.copy(alpha = 0.25f),
+                    ),
+                    strokeWidth = 5.dp,
+                )
+            }
+        },
+        text = { StatusText(stringResource(stage.textRes), layout.primarySp, maxLines = 2) },
+    )
 }
 
 @Composable
-private fun SuccessContent(dimensions: Dimensions, title: String, textWidth: Dp) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(6.dp),
-    ) {
-        AnimatedCheck(Modifier.size(56.dp))
-        // El título es la única prueba de que el sistema entendió (§7.4): es lo que se anuncia.
-        Text(
-            text = title,
-            fontSize = dimensions.titleSp,
-            color = AppColors.TextPrimary,
-            textAlign = TextAlign.Center,
-            maxLines = dimensions.titleLines,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier
-                .widthIn(max = textWidth)
-                .semantics { liveRegion = LiveRegionMode.Polite },
-        )
-        Text(stringResource(R.string.success_saved), fontSize = 12.sp, color = AppColors.Success)
-    }
+private fun SuccessContent(layout: Layout, title: String) {
+    StateLayout(
+        layout,
+        patch = {
+            FurPatch(R.drawable.patch_success, layout.patch) {
+                AnimatedCheck(Modifier.size(layout.patch * 0.42f))
+            }
+        },
+        text = {
+            // El título es la única prueba de que el sistema entendió (§7.4): es lo que se anuncia.
+            // Es contenido del usuario, así que no se pasa a mayúsculas.
+            StatusText(title, layout.primarySp, maxLines = 2, uppercase = false)
+            StatusText(stringResource(R.string.success_saved), layout.secondarySp, color = FurPalette.InkSoft)
+        },
+    )
 }
 
-/** Check verde que se dibuja con un trazo de ~300 ms. */
+/** Check bordado que se traza en ~300 ms. */
 @Composable
 private fun AnimatedCheck(modifier: Modifier = Modifier) {
     val stroke = remember { Animatable(0f) }
     LaunchedEffect(Unit) { stroke.animateTo(1f, tween(300)) }
     val description = stringResource(R.string.success_saved_description)
     Canvas(modifier.semantics { contentDescription = description }) {
-        val width = 5.dp.toPx()
-        drawCircle(AppColors.Success, radius = size.minDimension / 2 - width / 2, style = Stroke(width))
         val check = Path().apply {
-            moveTo(size.width * 0.28f, size.height * 0.52f)
-            lineTo(size.width * 0.44f, size.height * 0.67f)
-            lineTo(size.width * 0.73f, size.height * 0.36f)
+            moveTo(size.width * 0.12f, size.height * 0.52f)
+            lineTo(size.width * 0.40f, size.height * 0.78f)
+            lineTo(size.width * 0.90f, size.height * 0.24f)
         }
         val measure = PathMeasure().apply { setPath(check, false) }
         val partial = Path()
         measure.getSegment(0f, measure.length * stroke.value, partial, true)
-        drawPath(partial, AppColors.Success, style = Stroke(width, cap = StrokeCap.Round, join = StrokeJoin.Round))
+        val style = Stroke(size.minDimension * 0.16f, cap = StrokeCap.Round, join = StrokeJoin.Round)
+        translate(1.dp.toPx(), 2.dp.toPx()) { drawPath(partial, Color.Black.copy(alpha = 0.35f), style = style) }
+        drawPath(partial, FurPalette.Thread, style = style)
     }
 }
 
 @Composable
-private fun ErrorContent(state: NoteUiState.Error, textWidth: Dp, onAction: (ErrorAction) -> Unit) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Icon(AppIcons.Warning, contentDescription = null, tint = AppColors.Error, modifier = Modifier.size(48.dp))
-        Spacer(Modifier.height(4.dp))
-        StatusText(stringResource(state.messageRes), 14.sp, AppColors.TextPrimary, Modifier.widthIn(max = textWidth), maxLines = 2)
-        Spacer(Modifier.height(8.dp))
-        Button(
-            onClick = { onAction(state.action) },
-            modifier = Modifier.heightIn(min = 48.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = AppColors.Error,
-                contentColor = AppColors.Background,
-            ),
-        ) {
-            Text(stringResource(state.action.labelRes), fontSize = 14.sp, fontWeight = FontWeight.Medium)
-        }
-    }
+private fun ErrorContent(layout: Layout, state: NoteUiState.Error, onAction: (ErrorAction) -> Unit) {
+    StateLayout(
+        layout,
+        patch = {
+            FurPatch(
+                R.drawable.patch_error,
+                layout.patch,
+                onClick = { onAction(state.action) },
+                description = stringResource(state.action.labelRes),
+            ) {
+                ThreadIcon(AppIcons.Warning, layout.patch * 0.42f)
+            }
+        },
+        text = {
+            StatusText(stringResource(state.messageRes), layout.primarySp, maxLines = 2)
+            StatusText(stringResource(state.action.hintRes), layout.secondarySp, color = FurPalette.InkSoft)
+        },
+    )
 }
 
-/** Texto de estado: centrado y anunciado por TalkBack cuando cambia (§7.6). */
+/**
+ * Texto de estado con la tipografía del diseño (Lilita One, mayúsculas, tinta sobre crema). Centrado y
+ * anunciado por TalkBack cuando cambia (§7.6). Las cadenas siguen en minúscula en strings.xml.
+ */
 @Composable
 private fun StatusText(
     text: String,
     fontSize: TextUnit,
-    color: Color,
-    modifier: Modifier = Modifier,
     maxLines: Int = 1,
+    color: Color = FurPalette.Ink,
+    uppercase: Boolean = true,
 ) {
     Text(
-        text = text,
+        text = if (uppercase) text.uppercase() else text,
         fontSize = fontSize,
+        fontFamily = DisplayFont,
+        lineHeight = fontSize * 1.1f,
         color = color,
         textAlign = TextAlign.Center,
         maxLines = maxLines,
         overflow = TextOverflow.Ellipsis,
-        modifier = modifier.semantics { liveRegion = LiveRegionMode.Polite },
+        modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
     )
-}
-
-/** Botón redondo propio: el de Material no ofrece la escala a 0,92 al presionar (§7.4). */
-@Composable
-private fun CircularButton(
-    diameter: Dp,
-    description: String,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    enabled: Boolean = true,
-    content: @Composable () -> Unit,
-) {
-    val interaction = remember { MutableInteractionSource() }
-    val pressed by interaction.collectIsPressedAsState()
-    val scale by animateFloatAsState(if (pressed) 0.92f else 1f, label = "scale")
-    val view = LocalView.current
-    Box(
-        contentAlignment = Alignment.Center,
-        modifier = Modifier
-            .size(diameter)
-            .scale(scale)
-            .clip(CircleShape)
-            .then(modifier)
-            .clickable(interactionSource = interaction, indication = null, enabled = enabled) {
-                view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
-                onClick()
-            }
-            .semantics {
-                role = Role.Button
-                contentDescription = description
-            },
-    ) {
-        content()
-    }
 }
 
 // ——— Vistas previas: los cinco estados en pantalla pequeña y grande, y con fuente al 130 % ———

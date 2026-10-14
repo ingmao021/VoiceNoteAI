@@ -16,6 +16,9 @@
     <string name="action_retry">Reintentar</string>
     <string name="action_settings">Ajustes</string>
     <string name="action_back">Volver</string>
+    <string name="hint_retry">Toca para reintentar</string>
+    <string name="hint_settings">Toca para abrir ajustes</string>
+    <string name="hint_back">Toca para volver</string>
 
     <string name="error_capture_permission_denied">Necesito el micrófono</string>
     <string name="error_capture_microphone_busy">Micrófono ocupado</string>

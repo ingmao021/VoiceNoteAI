@@ -538,18 +538,19 @@ Valores de las guías oficiales de Wear OS. No son negociables.
 
 ### 7.3 Sistema de diseño
 
-**Material 3 Expressive para Wear OS**, vía `androidx.wear.compose:compose-material3:1.5.6` (ver 2.1). Tema oscuro obligatorio: las pantallas OLED consumen menos con fondos negros, y el negro puro se funde con el bisel en pantallas redondas.
+**Material 3 Expressive para Wear OS**, vía `androidx.wear.compose:compose-material3:1.5.6` (ver 2.1), con la estética de felpa de `docs/propuesta_diseño.png`: fondo crema, un parche central de color por estado con el icono bordado y tipografía Lilita One en mayúsculas. El detalle (composición, tokens, recursos) está en la skill `.claude/skills/wear-ui-ux`. El fondo claro sustituye al negro OLED anterior: consume más batería con la pantalla encendida, a cambio de identidad visual.
 
-| Estado | Color | Hex |
+| Estado | Color del parche | Hex |
 |---|---|---|
-| INICIAL | Azul | `#8AB4F8` |
-| GRABANDO | Rojo | `#F28B82` |
-| PROCESANDO | Ámbar | `#FDD663` |
-| ÉXITO | Verde | `#81C995` |
-| ERROR | Rojo claro | `#F6AEA9` |
-| Fondo | Negro | `#000000` |
-| Texto principal | Blanco | `#FFFFFF` |
-| Texto secundario | Gris | `#9AA0A6` |
+| INICIAL | Azul | `#2158A2` |
+| GRABANDO | Rojo | `#D63A3A` |
+| PROCESANDO | Ámbar | `#E09A14` |
+| ÉXITO | Verde | `#2E8B57` |
+| ERROR | Naranja óxido | `#C2451C` |
+| Fondo | Felpa crema | `#D8CCB8` |
+| Texto principal | Tinta | `#1B1A17` |
+| Texto secundario | Tinta suave | `#4A453C` |
+| Iconos sobre parches | Hilo crema | `#F1E8D8` |
 
 **Accesibilidad:** todas las combinaciones de texto sobre fondo superan 4,5:1 (WCAG AA). El color **nunca** es el único portador de información: cada estado tiene además una forma de icono y un patrón háptico distintos.
 

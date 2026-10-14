@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- FurPalette.Base: la felpa crema del fondo, para que el splash no destelle en negro. -->
+    <color name="fur_base">#D8CCB8</color>
+</resources>

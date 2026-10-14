@@ -7,17 +7,11 @@ import androidx.compose.ui.graphics.vector.PathParser
 import androidx.compose.ui.unit.dp
 
 /**
- * Los tres iconos de la app, con los trazados de Material Symbols. Se definen a mano para no
- * arrastrar `material-icons-extended` (varios MB) por tres iconos (RNF-11).
+ * Los iconos vectoriales de la app, con los trazados de Material Symbols. Se definen a mano para no
+ * arrastrar `material-icons-extended` (varios MB) por dos iconos (RNF-11). El micrófono de INICIAL
+ * es la imagen `patch_microphone`.
  */
 object AppIcons {
-    val Microphone = icon(
-        "Microphone",
-        "M12,14c1.66,0 2.99,-1.34 2.99,-3L15,5c0,-1.66 -1.34,-3 -3,-3S9,3.34 9,5v6c0,1.66 1.34,3 3,3z" +
-            "M17.3,11c0,3 -2.54,5.1 -5.3,5.1S6.7,14 6.7,11L5,11c0,3.41 2.72,6.23 6,6.72L11,21h2v-3.28" +
-            "c3.28,-0.48 6,-3.3 6,-6.72h-1.7z",
-    )
-
     val Stop = icon("Stop", "M7,7h10v10H7z")
 
     val Warning = icon(
