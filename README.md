@@ -36,8 +36,11 @@ texto viaja al backend. La definición completa del producto está en [`docs/PRD
 **Reloj (Wear OS)**
 - Captura por voz con el reconocedor del dispositivo (`SpeechRecognizer`, español `es-CO`), con un anillo que
   sigue el volumen real de la voz y un tope de 60 s.
-- Una sola pantalla con cinco estados: **inicial**, **escuchando**, **procesando** (con un gusanito animado),
+- Pantalla principal con cinco estados: **inicial**, **escuchando**, **procesando** (con un gusanito animado),
   **guardado** y **error**. Cada estado tiene su color, icono y vibración propios, para entenderlo sin leer.
+- **Historial** al deslizar hacia arriba: las tareas recientes de Google Tasks, incluidas las creadas desde el
+  teléfono. Toca una tarea para marcarla hecha o pendiente, sin borrarla de Google Tasks.
+- Las tareas vencidas (hechas o no) desaparecen del historial del reloj, pero siguen intactas en Google Tasks.
 - Errores con una acción clara en el mismo botón: reintentar sin volver a hablar, abrir ajustes o volver.
 - Respaldo con la pantalla de dictado del sistema en dispositivos sin servicio de reconocimiento.
 - Calentamiento del servidor al abrir la app, para que el primer envío no espere al arranque en frío.
@@ -46,6 +49,11 @@ texto viaja al backend. La definición completa del producto está en [`docs/PRD
 **Backend**
 - `POST /v1/notes`: estructura el texto con **Gemini** (título, texto limpio, subtareas y fecha relativa
   resuelta: «mañana», «el viernes»…) y crea la tarea en Google Tasks.
+- `GET /v1/tasks`: tareas recientes del listado principal para el historial del reloj. El backend oculta las
+  vencidas comparando con el día en la zona configurada, y devuelve ese `today` para que el reloj etiquete
+  HOY/MAÑANA igual.
+- `PATCH /v1/tasks/:id`: marca o desmarca una tarea desde el reloj. No existe un endpoint de borrado: las tareas
+  vencidas solo se ocultan, nunca se eliminan.
 - Si la IA falla o tarda demasiado, la nota se guarda igualmente sin estructurar; no se pierde nada.
 - Autenticación con token Bearer, errores tipados y especificación OpenAPI en `/openapi.json`.
 
@@ -130,8 +138,10 @@ Los valores de arriba son de ejemplo. `.env` nunca se sube al repositorio.
 ```properties
 # El mismo valor que DEV_API_TOKEN del backend. Sin él, la app no envía nada y solo muestra el texto.
 voicenoteai.devApiToken=cambia-esto-por-un-token-largo
-# Backend desplegado (por defecto http://10.0.2.2:3000, el PC visto desde el emulador).
-voicenoteai.backendUrl=https://voicenoteai-backend.onrender.com
+# Desarrollo local con `npm run dev`: el PC visto desde el emulador.
+voicenoteai.backendUrl=http://10.0.2.2:3000
+# Contra el backend desplegado, cambia la línea anterior por esta:
+# voicenoteai.backendUrl=https://voicenoteai-backend.onrender.com
 
 # Opcional: firma de release. Sin estas líneas se firma con la clave de debug.
 voicenoteai.keystore.path=keystore/voicenoteai.jks
@@ -211,9 +221,13 @@ Para cambiar entre builds firmadas con claves distintas, primero ejecuta `adb un
 
 La tarea aparece en Google Tasks con título, notas, subtareas («café», «leche», «pan») y fecha de vencimiento.
 
+Para revisar lo reciente, desliza hacia arriba desde la pantalla inicial o toca la pista **HISTORIAL**. Toca una
+tarea de la lista para marcarla hecha o pendiente; las vencidas se ocultan del reloj pero no se borran de Google
+Tasks. El chevrón de la cabecera (o el gesto de retroceso) vuelve a la nota.
+
 ### API
 
-Todas las rutas de notas exigen `Authorization: Bearer <DEV_API_TOKEN>`.
+Todas las rutas salvo `GET /v1/health` exigen `Authorization: Bearer <DEV_API_TOKEN>`.
 
 **`GET /v1/health`**: ping de calentamiento.
 
@@ -238,10 +252,37 @@ curl -X POST https://voicenoteai-backend.onrender.com/v1/notes \
 `structured` vale `false` cuando la IA falló y se guardó el texto tal cual. `dueDate` es `null` si el dictado no
 indicaba fecha.
 
+**`GET /v1/tasks?limit=20`**: historial del reloj. Devuelve las tareas de nivel superior del listado principal de
+Google Tasks, en su orden, sin las vencidas. `limit` admite 1–50.
+
+```sh
+curl "https://voicenoteai-backend.onrender.com/v1/tasks?limit=20" \
+  -H "Authorization: Bearer $DEV_API_TOKEN"
+```
+
+```json
+{
+  "today": "2026-11-07",
+  "tasks": [
+    { "id": "MTIzNDU2Nzg5", "title": "Comprar café", "dueDate": "2026-11-08", "completed": false }
+  ]
+}
+```
+
+**`PATCH /v1/tasks/:id`**: marca o desmarca una tarea. El cuerpo solo admite `completed`.
+
+```sh
+curl -X PATCH https://voicenoteai-backend.onrender.com/v1/tasks/MTIzNDU2Nzg5 \
+  -H "Authorization: Bearer $DEV_API_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"completed": true}'
+```
+
 | Código | `error` | Significado |
 |---|---|---|
 | 400 | `invalid_request` | Cuerpo mal formado |
 | 401 | `invalid_token` | Falta el token o no coincide |
+| 404 | `task_not_found` | La tarea se borró desde otro cliente |
 | 422 | `text_empty` / `text_too_long` | Texto vacío o con más de 5000 caracteres |
 | 424 | `google_access_revoked` | Hay que volver a autorizar la cuenta de Google |
 | 502 | `tasks_provider_error` | Google Tasks rechazó la petición |
@@ -256,7 +297,7 @@ VoiceNoteAI/
 │   ├── src/main/java/com/voicenoteai/wear/
 │   │   ├── domain/                Modelos, casos de uso e interfaces (sin Android)
 │   │   ├── data/                  Reconocedor de voz, cliente HTTP (Ktor), batería
-│   │   ├── presentation/          Pantalla, estados, ViewModel y tema (Compose)
+│   │   ├── presentation/          Nota, historial, estados, ViewModels y tema (Compose)
 │   │   └── di/AppContainer.kt     Inyección de dependencias manual
 │   ├── src/main/res/              Imágenes de felpa, fuente, textos e icono
 │   ├── src/debug/                 Permite HTTP local solo en debug

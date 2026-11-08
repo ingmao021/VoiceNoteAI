@@ -5,17 +5,19 @@ description: Sistema de diseño y reglas de UI/UX para la app de reloj (Wear OS)
 
 # UI/UX del reloj — VoiceNoteAI
 
-La app es **una sola pantalla con cinco estados** (INICIAL, GRABANDO, PROCESANDO, ÉXITO, ERROR) que el usuario
-mira de reojo, con la muñeca levantada, durante 2–5 segundos. Cada decisión de diseño se juzga con esa
-pregunta: *¿se entiende en un vistazo, sin leer?*
+La app tiene **una página de nota con cinco estados** (INICIAL, GRABANDO, PROCESANDO, ÉXITO, ERROR) que el usuario
+mira de reojo, con la muñeca levantada, durante 2–5 segundos, y **una página de historial** a la que se llega
+deslizando hacia arriba. Cada decisión de diseño se juzga con esa pregunta: *¿se entiende en un vistazo, sin
+leer?*
 
 Referencia visual: `docs/propuesta_diseño.png` (fuente de verdad).
 
 ## 1. Principios de UX para reloj
 
-1. **Un estado = una acción.** Hay un único objetivo táctil por estado: el parche central. Nada de menús,
-   listas ni segundos botones. Si un estado necesita acción (detener, reintentar, ajustes, volver) la hace
-   el parche, y el texto inferior dice `TOCA PARA …`.
+1. **Un estado = una acción.** En la página de nota hay un único objetivo táctil por estado: el parche central.
+   Nada de menús ni segundos botones. Si un estado necesita acción (detener, reintentar, ajustes, volver) la hace
+   el parche, y el texto inferior dice `TOCA PARA …`. La única excepción es la página de historial: es una lista
+   de consulta, no un menú de navegación (§8).
 2. **Vistazo antes que lectura.** El estado se reconoce por **color + icono + háptica**, nunca solo por el
    texto, y nunca solo por el color (daltonismo: rojo/verde).
 3. **Texto mínimo.** Máximo 3–4 palabras por mensaje de estado; 2 líneas como tope absoluto. Si no cabe,
@@ -24,7 +26,7 @@ Referencia visual: `docs/propuesta_diseño.png` (fuente de verdad).
 5. **Sin sorpresas de posición.** El parche ocupa **el mismo lugar y tamaño en todos los estados**: el ojo y
    el dedo ya saben dónde mirar/tocar. (Además tapa la costura del centro del fondo generado.)
 6. **Retroalimentación inmediata.** Toque → escala 0,92 + háptico `VIRTUAL_KEY` en < 100 ms. Cada estado
-   tiene su patrón háptico (`Haptic` en `NoteUiState.kt`).
+   tiene su patrón háptico (`Haptic` en `presentation/haptic/Haptic.kt`).
 7. **Movimiento con propósito.** Transición entre estados: fundido 200/150 ms. Dentro de un estado solo se
    anima lo que informa (nivel de voz, progreso de 60 s, giro de procesamiento, trazo del check).
 
@@ -117,7 +119,26 @@ pinta Compose (`AppIcons`) para poder animarlos y mantenerlos nítidos.
 Si llega una propuesta nueva: medir de nuevo las constantes del script (centro/radio del disco, caja del
 texto), regenerar, y revisar una hoja de contacto de todos los parches sobre el fondo antes de compilar.
 
-## 8. Lista de revisión antes de dar por terminado un cambio de UI
+## 8. Página de historial
+
+Es la segunda página del `VerticalPager` (se sube desde la nota). Mantiene el fondo de felpa y la tipografía, pero
+es una lista de consulta, no otro estado de la nota.
+
+- **Cabecera fija:** chevrón de volver (`Volver`, área 48 dp) + `RECIENTES` centrado, en 14/16 sp.
+- **Filas:** ancho ≤ 0.72 S; fondo `Thread` translúcido con borde `InkSoft` suave. A la izquierda, una casilla
+  de 22/26 dp (completada = círculo `Success` con check `Thread`); a la derecha, título en 12/13 sp (máx. 2
+  líneas) y etiqueta `HOY` / `MAÑANA` / `SIN FECHA` / día abreviado en 10/11 sp.
+- **Acción:** toda la fila es el objetivo táctil (`Role.Checkbox`, ≥ 48 dp de alto). La completada se distingue
+  por el check y el tachado, no solo por el color. `updatingIds` atenúa la casilla mientras viaja la petición.
+- **Estados sin lista:** cargando (indicador + `CARGANDO…`), vacío (`AÚN NO HAY TAREAS` + `DESLIZA ABAJO PARA
+  VOLVER`) y error (`NO PUDE CARGAR` + `TOCA PARA REINTENTAR`; sin token, solo volver). Todos dentro de 0.72 S.
+- **Datos:** solo tareas no vencidas; las vencidas se ocultan, **nunca se borran** de Google Tasks. El «hoy» lo
+  manda el backend para que las etiquetas coincidan con el filtro.
+- **Háptica:** `TOGGLE` al confirmar el cambio, `ERROR` al fallar o al no poder cargar.
+- **Movimiento:** deslizamiento vertical entre páginas. Se bloquea mientras la nota graba o procesa; el botón de
+  retroceso y el chevrón vuelven a la nota.
+
+## 9. Lista de revisión antes de dar por terminado un cambio de UI
 
 - [ ] El parche está en la misma posición y tamaño en los cinco estados.
 - [ ] Ningún texto sale de la zona segura (0.72 S de ancho, entre 0.08 S y 0.85 S) en 192 dp y en 227 dp.
@@ -125,5 +146,8 @@ texto), regenerar, y revisar una hoja de contacto de todos los parches sobre el 
 - [ ] Colores solo desde `FurPalette`; texto en `Ink`.
 - [ ] Cada estado distinguible en escala de grises (icono + texto).
 - [ ] Parches tocables con `Role.Button` y descripción; textos con `liveRegion`.
-- [ ] `./gradlew :wear:assembleDebug :wear:testDebugUnitTest` en verde.
-- [ ] Vistas previas de los cinco estados revisadas en Android Studio.
+- [ ] El historial solo muestra tareas no vencidas y no ofrece borrar.
+- [ ] Cada fila del historial es tocable, anuncia su estado de casilla y no depende solo del color.
+- [ ] La cabecera del historial vuelve a la nota y el paginador se bloquea al grabar o procesar.
+- [ ] `./gradlew :wear:assembleDebug :wear:testDebugUnitTest :wear:lintDebug` en verde.
+- [ ] Vistas previas de los cinco estados y del historial revisadas en Android Studio.

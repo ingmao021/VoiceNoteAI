@@ -2,6 +2,8 @@ import { afterEach, describe, expect, it } from 'vitest';
 import type { FastifyInstance } from 'fastify';
 import type { NoteStructurer } from '../../../src/application/ports/note-structurer.js';
 import { CreateNoteUseCase } from '../../../src/application/use-cases/create-note.use-case.js';
+import { ListRecentTasksUseCase } from '../../../src/application/use-cases/list-recent-tasks.use-case.js';
+import { SetTaskCompletedUseCase } from '../../../src/application/use-cases/set-task-completed.use-case.js';
 import { TaskProviderAccessRevokedError, TaskProviderError } from '../../../src/domain/errors/task-provider-errors.js';
 import { RawNoteStructurer } from '../../../src/infrastructure/ai/raw-note-structurer.js';
 import { buildApp } from '../../../src/presentation/http/app.js';
@@ -15,7 +17,15 @@ let tasks: FakeTaskGateway;
 
 async function start(structurer: NoteStructurer = new RawNoteStructurer()) {
   tasks = new FakeTaskGateway();
-  app = await buildApp({ devApiToken: TOKEN, createNote: new CreateNoteUseCase(structurer, tasks) }, { logger: false });
+  app = await buildApp(
+    {
+      devApiToken: TOKEN,
+      createNote: new CreateNoteUseCase(structurer, tasks),
+      listTasks: new ListRecentTasksUseCase(tasks, 'America/Bogota'),
+      setTaskCompleted: new SetTaskCompletedUseCase(tasks),
+    },
+    { logger: false },
+  );
   return app;
 }
 

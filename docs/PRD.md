@@ -48,7 +48,7 @@ Dos desviaciones del planteamiento inicial, ambas derivadas de hallazgos documen
 | # | Qué cambió | Por qué |
 |---|---|---|
 | 1 | `targetSdk`/`compileSdk` **37** y `compose-material3` **1.5.6** | Son los valores de la plantilla de Android Studio con que arrancó el proyecto. 1.5.6 es un parche de la misma línea 1.5; un `targetSdk` más reciente no cambia nada del diseño. |
-| 2 | `compose-navigation` **fuera** del stack del reloj | Hay una sola pantalla con una máquina de estados (§7.5). Se añadirá solo si aparece una segunda pantalla. |
+| 2 | `compose-navigation` **fuera** del stack del reloj | Las dos páginas (nota e historial) se resuelven con el `VerticalPager` de Wear Compose Foundation, sin grafo de rutas (§7.5). Se añadirá solo si aparecen más destinos. |
 | 3 | La build de Gradle vive en la **raíz** del repositorio; `wear/` es el módulo `:wear` — sección 2.3 | Permite abrir la raíz en Android Studio y ejecutar la app sin cambiar de carpeta. El despliegue del backend no se ve afectado: Render usa *Root Directory* = `backend`. |
 | 4 | Reconocedor: **solo `createSpeechRecognizer`**, sin la rama de `createOnDeviceSpeechRecognizer` — sección 3.3 | La rama en el dispositivo resolvía R4, aún no validado, a cambio de un fallo confirmado: los modelos locales pueden no incluir `es-CO` y darían «Idioma no disponible» donde el reconocedor estándar funciona. El estándar ya usa modelos locales cuando existen. |
 | 5 | FA-04: la cancelación **descarta y cierra la app**, en lugar de volver a INICIAL — secciones 4.1, 5 y 7.5 | En Wear OS el gesto de retroceso es deslizar para cerrar y el usuario espera que saque de la app; retenerlo en INICIAL contradice la plataforma. La captura se cancela en `onStop()`, que cubre también el botón de encendido y las notificaciones. |
@@ -111,7 +111,7 @@ Todas confirmadas salvo donde se indica.
 | Capa | Tecnología |
 |---|---|
 | Lenguaje | Kotlin |
-| UI | `androidx.wear.compose:compose-material3:1.5.6`, más `compose-foundation` y `compose-ui-tooling` en la misma versión. Sin `compose-navigation` mientras haya una sola pantalla. |
+| UI | `androidx.wear.compose:compose-material3:1.5.6`, más `compose-foundation` y `compose-ui-tooling` en la misma versión. Sin `compose-navigation`: la nota y el historial son dos páginas de un `VerticalPager`. |
 | Reconocimiento de voz | `android.speech.SpeechRecognizer` + `RecognitionListener` — API de plataforma, sin dependencia externa |
 | Asincronía | Kotlin Coroutines + Flow |
 | Estado de UI | `ViewModel` con `androidx.lifecycle:lifecycle-viewmodel-compose` |
@@ -184,8 +184,8 @@ La build de Gradle está en la raíz para que Android Studio abra el repositorio
 ┌─────────────────────── RELOJ (Wear OS) ───────────────────────┐
 │                                                               │
 │  Capa de presentación — Compose for Wear OS                   │
-│    └─ Una sola pantalla, cinco estados + pantalla de          │
-│       vinculación (solo primer uso)                           │
+│    └─ Pantalla de nota (cinco estados), página de historial    │
+│       y pantalla de vinculación (solo primer uso)              │
 │                                                               │
 │  Capa de dominio                                              │
 │    ├─ CapturarVozUseCase   → SpeechRecognizer                 │
@@ -518,7 +518,7 @@ Google establece el principio fundamental del diseño en Wear OS: enfocar las ap
 |---|---|---|
 | 1 | **Un solo objetivo táctil** | Nada compite por la atención. El botón ocupa el centro óptico de la pantalla. |
 | 2 | **Estado legible de un vistazo** | El estado se comunica por color y forma antes que por texto. El texto confirma, no informa. |
-| 3 | **Cero navegación** | No hay pantallas secundarias, menús ni diálogos modales. |
+| 3 | **Navegación mínima** | Una página principal (nota) y una secundaria (historial) a la que se llega deslizando hacia arriba. Sin menús, rutas ni diálogos modales. |
 | 4 | **Háptica como canal principal** | En el reloj, la vibración es más fiable que la vista: el usuario puede no estar mirando. |
 | 5 | **Recuperación sin castigo** | Un error nunca obliga a repetir el dictado. |
 
@@ -615,7 +615,10 @@ Valores de las guías oficiales de Wear OS. No son negociables.
 
 ### 7.5 Mapa de navegación
 
-Sin navegación entre pantallas. Una superficie con una máquina de estados.
+La nota es una superficie con una máquina de estados. Debajo de ella, un `VerticalPager` de dos páginas añade el
+historial: se sube deslizando desde la nota (o tocando la pista **HISTORIAL**) y se baja con el chevrón de la
+cabecera, el gesto de bajar o el botón de retroceso del sistema. Mientras la nota graba o procesa, el paginador
+no responde a deslizamientos para no interrumpir la captura.
 
 ```
    ┌──────────────┐
@@ -647,6 +650,20 @@ Sin navegación entre pantallas. Una superficie con una máquina de estados.
 ```
 
 La cancelación no aparece en el diagrama porque no es una transición: descarta la captura y cierra la app (FA-04).
+
+#### 7.5.1 Página de historial
+
+- **Origen de los datos:** Google Tasks, vía `GET /v1/tasks`. Incluye las tareas creadas desde el teléfono y las
+  completadas; no hay estado local.
+- **Qué se ve:** tareas de nivel superior del listado principal, en su orden, con título y etiqueta de vencimiento
+  (`HOY`, `MAÑANA`, `SIN FECHA` o el día abreviado). El `today` viene del backend para que la etiqueta coincida con
+  el filtro.
+- **Qué se oculta:** las tareas con vencimiento anterior a hoy, estén hechas o no, desaparecen del historial del
+  reloj. **No se borran de Google Tasks**: solo se filtran en la respuesta.
+- **Acción:** tocar una fila la marca hecha o pendiente (`PATCH /v1/tasks/:id`) con cambio optimista, vibración
+  corta y reversión si el backend falla. Si la tarea ya no existe (`404`), se quita de la lista.
+- **Estados:** cargando, vacío, error con reintento (o solo volver si el token no está configurado) y contenido.
+- **Navegación:** el chevrón de la cabecera vuelve a la nota; no hay botón de borrar ni de crear tareas aquí.
 
 ### 7.6 Accesibilidad
 

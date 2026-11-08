@@ -12,6 +12,7 @@ import com.voicenoteai.wear.domain.speech.VoiceRecognizer
 import com.voicenoteai.wear.domain.usecase.CheckCapturePreconditionsUseCase
 import com.voicenoteai.wear.domain.usecase.SaveNoteUseCase
 import com.voicenoteai.wear.domain.usecase.WarmUpBackendUseCase
+import com.voicenoteai.wear.presentation.haptic.Haptic
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay

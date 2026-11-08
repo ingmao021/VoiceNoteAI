@@ -13,3 +13,10 @@ export class TaskProviderError extends DomainError {
     super('Task provider request failed', { cause });
   }
 }
+
+/** La tarea ya no existe: se borró desde el teléfono o desde otro cliente. */
+export class TaskNotFoundError extends DomainError {
+  constructor(cause: unknown) {
+    super('Task not found', { cause });
+  }
+}

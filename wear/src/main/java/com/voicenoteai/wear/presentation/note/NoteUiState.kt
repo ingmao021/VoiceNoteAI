@@ -42,6 +42,3 @@ enum class ErrorAction(@param:StringRes val labelRes: Int, @param:StringRes val 
     /** Errores sin reintento: vuelve a INICIAL. */
     GO_BACK(R.string.action_back, R.string.hint_back),
 }
-
-/** Patrones hápticos distintos para usar el reloj sin mirarlo (PRD §7.6). */
-enum class Haptic { START, SUCCESS, ERROR }

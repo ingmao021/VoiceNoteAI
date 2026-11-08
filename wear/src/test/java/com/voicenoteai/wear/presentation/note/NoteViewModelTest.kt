@@ -9,6 +9,7 @@ import com.voicenoteai.wear.domain.repository.NoteRepository
 import com.voicenoteai.wear.domain.usecase.CheckCapturePreconditionsUseCase
 import com.voicenoteai.wear.domain.usecase.SaveNoteUseCase
 import com.voicenoteai.wear.domain.usecase.WarmUpBackendUseCase
+import com.voicenoteai.wear.presentation.haptic.Haptic
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi

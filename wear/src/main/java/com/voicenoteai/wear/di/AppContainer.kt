@@ -8,17 +8,21 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.voicenoteai.wear.BuildConfig
 import com.voicenoteai.wear.data.device.AndroidBatteryMonitor
 import com.voicenoteai.wear.data.local.OfflineNoteRepository
+import com.voicenoteai.wear.data.local.OfflineTaskHistoryRepository
 import com.voicenoteai.wear.data.remote.HttpNoteRepository
+import com.voicenoteai.wear.data.remote.HttpTaskHistoryRepository
 import com.voicenoteai.wear.data.remote.NoteApi
 import com.voicenoteai.wear.data.speech.AndroidVoiceRecognizer
 import com.voicenoteai.wear.data.speech.SystemDictationContract
 import com.voicenoteai.wear.domain.device.BatteryMonitor
 import com.voicenoteai.wear.domain.model.CaptureMode
 import com.voicenoteai.wear.domain.repository.NoteRepository
+import com.voicenoteai.wear.domain.repository.TaskHistoryRepository
 import com.voicenoteai.wear.domain.speech.VoiceRecognizer
 import com.voicenoteai.wear.domain.usecase.CheckCapturePreconditionsUseCase
 import com.voicenoteai.wear.domain.usecase.SaveNoteUseCase
 import com.voicenoteai.wear.domain.usecase.WarmUpBackendUseCase
+import com.voicenoteai.wear.presentation.history.HistoryViewModel
 import com.voicenoteai.wear.presentation.note.NoteViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -34,7 +38,30 @@ class AppContainer(context: Context) {
     // El ping de calentamiento no debe morir con la actividad: alcance propio, del tamaño de la app.
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
-    private val noteRepository: NoteRepository by lazy { createNoteRepository() }
+    private val hasBackend = BuildConfig.DEV_API_TOKEN.isNotBlank()
+
+    /**
+     * Un único cliente HTTP para notas e historial. Sin token no se crea: las dos interfaces caen
+     * en sus objetos nulos.
+     */
+    private val backendApi: NoteApi by lazy {
+        Log.i(HttpNoteRepository.TAG, "Backend: ${BuildConfig.BACKEND_URL}")
+        NoteApi(BuildConfig.BACKEND_URL, BuildConfig.DEV_API_TOKEN)
+    }
+
+    private val noteRepository: NoteRepository by lazy {
+        if (hasBackend) {
+            HttpNoteRepository(backendApi, appScope)
+        } else {
+            Log.w(HttpNoteRepository.TAG, "No voicenoteai.devApiToken in local.properties: notes are not sent")
+            OfflineNoteRepository()
+        }
+    }
+
+    private val taskHistoryRepository: TaskHistoryRepository by lazy {
+        if (hasBackend) HttpTaskHistoryRepository(backendApi) else OfflineTaskHistoryRepository()
+    }
+
     private val batteryMonitor: BatteryMonitor by lazy { AndroidBatteryMonitor(this.context) }
 
     /** El ViewModel es dueño del reconocedor y lo libera en `onCleared`. */
@@ -53,6 +80,10 @@ class AppContainer(context: Context) {
         }
     }
 
+    val historyViewModelFactory: ViewModelProvider.Factory = viewModelFactory {
+        initializer { HistoryViewModel(taskHistoryRepository) }
+    }
+
     /** Sin `RecognitionService` se recurre al dictado del sistema; sin ninguno de los dos, FA-21. */
     private fun captureMode(recognizer: VoiceRecognizer) = when {
         recognizer.isAvailable -> CaptureMode.RECOGNIZER
@@ -63,13 +94,4 @@ class AppContainer(context: Context) {
         }
     }
 
-    /** Sin token configurado la app no envía nada y muestra el texto como título, como en la etapa 1. */
-    private fun createNoteRepository(): NoteRepository {
-        if (BuildConfig.DEV_API_TOKEN.isBlank()) {
-            Log.w(HttpNoteRepository.TAG, "No voicenoteai.devApiToken in local.properties: notes are not sent")
-            return OfflineNoteRepository()
-        }
-        Log.i(HttpNoteRepository.TAG, "Backend: ${BuildConfig.BACKEND_URL}")
-        return HttpNoteRepository(NoteApi(BuildConfig.BACKEND_URL, BuildConfig.DEV_API_TOKEN), appScope)
-    }
 }

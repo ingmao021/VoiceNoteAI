@@ -20,6 +20,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.voicenoteai.wear.data.speech.SystemDictationContract
 import com.voicenoteai.wear.domain.model.CaptureMode
+import com.voicenoteai.wear.presentation.haptic.HapticPlayer
 
 private const val TAG = "VoiceNoteAI.UI"
 
@@ -30,7 +31,11 @@ private const val TAG = "VoiceNoteAI.UI"
  * [onRecordingChanged] activa `FLAG_KEEP_SCREEN_ON` mientras se escucha (§7.4).
  */
 @Composable
-fun NoteRoute(viewModel: NoteViewModel, onRecordingChanged: (Boolean) -> Unit) {
+fun NoteRoute(
+    viewModel: NoteViewModel,
+    onRecordingChanged: (Boolean) -> Unit,
+    onOpenHistory: () -> Unit = {},
+) {
     val context = LocalContext.current
     val activity = LocalActivity.current
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -79,6 +84,7 @@ fun NoteRoute(viewModel: NoteViewModel, onRecordingChanged: (Boolean) -> Unit) {
                 ErrorAction.GO_BACK -> viewModel.goBack()
             }
         },
+        onOpenHistory = onOpenHistory,
     )
 }
 

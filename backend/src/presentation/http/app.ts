@@ -4,8 +4,9 @@ import { TaskProviderAccessRevokedError } from '../../domain/errors/task-provide
 import { mapError } from './error-mapper.js';
 import { healthRoutes } from './routes/health.routes.js';
 import { notesRoutes, type NotesRoutesOptions } from './routes/notes.routes.js';
+import { tasksRoutes, type TasksRoutesOptions } from './routes/tasks.routes.js';
 
-export type AppDependencies = NotesRoutesOptions;
+export type AppDependencies = NotesRoutesOptions & TasksRoutesOptions;
 
 /**
  * Construye la app con sus dependencias inyectadas, para que las pruebas usen falsos con
@@ -43,5 +44,6 @@ export async function buildApp(deps: AppDependencies, options: FastifyServerOpti
 
   await app.register(healthRoutes);
   await app.register(notesRoutes, deps);
+  await app.register(tasksRoutes, deps);
   return app;
 }

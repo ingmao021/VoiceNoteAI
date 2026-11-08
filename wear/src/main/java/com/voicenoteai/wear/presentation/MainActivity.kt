@@ -7,14 +7,16 @@ import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.voicenoteai.wear.VoiceNoteApplication
-import com.voicenoteai.wear.presentation.note.NoteRoute
+import com.voicenoteai.wear.presentation.history.HistoryViewModel
+import com.voicenoteai.wear.presentation.home.HomeRoute
 import com.voicenoteai.wear.presentation.note.NoteViewModel
 import com.voicenoteai.wear.presentation.theme.VoiceNoteAITheme
 
 class MainActivity : ComponentActivity() {
-    private val viewModel: NoteViewModel by viewModels {
-        (application as VoiceNoteApplication).container.noteViewModelFactory
-    }
+    private val container by lazy { (application as VoiceNoteApplication).container }
+
+    private val noteViewModel: NoteViewModel by viewModels { container.noteViewModelFactory }
+    private val historyViewModel: HistoryViewModel by viewModels { container.historyViewModelFactory }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         // Sin esta llamada el tema Theme.SplashScreen nunca cede a postSplashScreenTheme.
@@ -22,7 +24,11 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             VoiceNoteAITheme {
-                NoteRoute(viewModel, onRecordingChanged = ::keepScreenOn)
+                HomeRoute(
+                    noteViewModel = noteViewModel,
+                    historyViewModel = historyViewModel,
+                    onRecordingChanged = ::keepScreenOn,
+                )
             }
         }
     }
@@ -33,7 +39,7 @@ class MainActivity : ComponentActivity() {
      */
     override fun onStop() {
         super.onStop()
-        if (viewModel.cancelOnExit()) finish()
+        if (noteViewModel.cancelOnExit()) finish()
     }
 
     /** Evita que el modo ambiente corte un dictado largo. */

@@ -11,8 +11,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -20,8 +19,10 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -36,12 +37,12 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.translate
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -52,6 +53,7 @@ import androidx.compose.ui.unit.lerp
 import androidx.compose.ui.unit.min
 import androidx.compose.ui.unit.sp
 import androidx.wear.compose.material3.CircularProgressIndicator
+import androidx.wear.compose.material3.Icon
 import androidx.wear.compose.material3.ProgressIndicatorDefaults
 import androidx.wear.compose.material3.Text
 import androidx.wear.compose.ui.tooling.preview.WearPreviewDevices
@@ -59,6 +61,7 @@ import androidx.wear.compose.ui.tooling.preview.WearPreviewFontScales
 import com.voicenoteai.wear.R
 import com.voicenoteai.wear.presentation.theme.AppIcons
 import com.voicenoteai.wear.presentation.theme.DisplayFont
+import com.voicenoteai.wear.presentation.theme.FurBackground
 import com.voicenoteai.wear.presentation.theme.FurPalette
 import com.voicenoteai.wear.presentation.theme.VoiceNoteAITheme
 
@@ -78,6 +81,11 @@ private class Layout(side: Dp) {
     private val large = side >= 225.dp
     val primarySp: TextUnit = if (large) 16.sp else 14.sp
     val secondarySp: TextUnit = if (large) 12.sp else 11.sp
+
+    // La pista del historial queda dentro de la zona segura (por encima de 0.85 S).
+    val hintBottom: Dp = side * 0.15f
+    val hintIcon: Dp = if (large) 16.dp else 14.dp
+    val hintSp: TextUnit = if (large) 10.sp else 9.sp
 }
 
 /**
@@ -92,20 +100,10 @@ fun NoteScreen(
     onMainButton: () -> Unit,
     onErrorAction: (ErrorAction) -> Unit,
     modifier: Modifier = Modifier,
+    onOpenHistory: () -> Unit = {},
 ) {
-    BoxWithConstraints(
-        modifier = modifier
-            .fillMaxSize()
-            // En pantallas cuadradas las esquinas quedan fuera del fondo redondo.
-            .background(FurPalette.Base),
-    ) {
+    BoxWithConstraints(modifier = modifier.fillMaxSize()) {
         val layout = Layout(min(maxWidth, maxHeight))
-        Image(
-            painterResource(R.drawable.fur_background),
-            contentDescription = null,
-            contentScale = ContentScale.Crop,
-            modifier = Modifier.fillMaxSize(),
-        )
         AnimatedContent(
             targetState = state,
             // Solo cambiar de estado anima; los cambios dentro de un estado (nivel, etapa) no.
@@ -115,7 +113,7 @@ fun NoteScreen(
             label = "state",
         ) { current ->
             when (current) {
-                is NoteUiState.Idle -> IdleContent(layout, current.starting, onMainButton)
+                is NoteUiState.Idle -> IdleContent(layout, current.starting, onMainButton, onOpenHistory)
                 is NoteUiState.Recording -> RecordingContent(layout, current, onMainButton)
                 is NoteUiState.Processing -> ProcessingContent(layout, current.stage)
                 is NoteUiState.Success -> SuccessContent(layout, current.title)
@@ -149,9 +147,20 @@ private fun StateLayout(
 }
 
 @Composable
-private fun IdleContent(layout: Layout, starting: Boolean, onMainButton: () -> Unit) {
+private fun IdleContent(layout: Layout, starting: Boolean, onMainButton: () -> Unit, onOpenHistory: () -> Unit) {
     StateLayout(
         layout,
+        behind = {
+            if (!starting) {
+                SwipeUpHint(
+                    layout,
+                    onOpenHistory,
+                    Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = layout.hintBottom),
+                )
+            }
+        },
         patch = {
             // El micrófono bordado viene en la imagen, tal cual el diseño.
             FurPatch(
@@ -164,6 +173,45 @@ private fun IdleContent(layout: Layout, starting: Boolean, onMainButton: () -> U
         },
         text = { StatusText(stringResource(R.string.idle_hint), layout.primarySp) },
     )
+}
+
+/**
+ * Pista discreta del historial: el gesto de deslizar arriba no se descubre solo. También es
+ * tocable para quien no pueda o no quiera deslizar.
+ */
+@Composable
+private fun SwipeUpHint(layout: Layout, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val description = stringResource(R.string.history_swipe_description)
+    // El área táctil mínima de 48 dp crece hacia arriba; el dibujo se queda pegado al borde
+    // inferior para no chocar con TOCA PARA HABLAR.
+    Box(
+        contentAlignment = Alignment.BottomCenter,
+        modifier = modifier
+            .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
+            .clickable(onClick = onClick)
+            .semantics {
+                role = Role.Button
+                contentDescription = description
+            },
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(3.dp),
+        ) {
+            Icon(
+                AppIcons.ChevronUp,
+                contentDescription = null,
+                tint = FurPalette.InkSoft,
+                modifier = Modifier.size(layout.hintIcon),
+            )
+            Text(
+                text = stringResource(R.string.history_swipe_hint).uppercase(),
+                fontSize = layout.hintSp,
+                fontFamily = DisplayFont,
+                color = FurPalette.InkSoft,
+            )
+        }
+    }
 }
 
 @Composable
@@ -329,7 +377,12 @@ private fun StatusText(
 // ——— Vistas previas: los cinco estados en pantalla pequeña y grande, y con fuente al 130 % ———
 
 @Composable
-private fun Preview(state: NoteUiState) = VoiceNoteAITheme { NoteScreen(state, {}, {}) }
+private fun Preview(state: NoteUiState) = VoiceNoteAITheme {
+    Box {
+        FurBackground()
+        NoteScreen(state, {}, {})
+    }
+}
 
 @WearPreviewDevices
 @Composable

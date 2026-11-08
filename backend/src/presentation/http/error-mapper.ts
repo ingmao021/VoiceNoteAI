@@ -1,6 +1,10 @@
 import { DomainError } from '../../domain/errors/domain-error.js';
 import { EmptyNoteTextError, NoteTextTooLongError } from '../../domain/errors/note-text-errors.js';
-import { TaskProviderAccessRevokedError, TaskProviderError } from '../../domain/errors/task-provider-errors.js';
+import {
+  TaskNotFoundError,
+  TaskProviderAccessRevokedError,
+  TaskProviderError,
+} from '../../domain/errors/task-provider-errors.js';
 
 export interface HttpError {
   status: number;
@@ -16,6 +20,7 @@ const DOMAIN_ERRORS: ReadonlyArray<readonly [DomainErrorClass, number, string]> 
   [NoteTextTooLongError, 422, 'text_too_long'],
   // El token de la app es válido: falló una dependencia (Google), no la autenticación (FA-13).
   [TaskProviderAccessRevokedError, 424, 'google_access_revoked'],
+  [TaskNotFoundError, 404, 'task_not_found'],
   [TaskProviderError, 502, 'tasks_provider_error'],
 ];
 

@@ -33,4 +33,23 @@
     <string name="error_submission_relink_account">Vuelve a conectar tu cuenta</string>
     <string name="error_submission_not_saved">No se pudo guardar</string>
     <string name="error_submission_timed_out">Tardó demasiado</string>
+
+    <!-- Historial -->
+    <string name="history_title">Recientes</string>
+    <string name="history_swipe_hint">Historial</string>
+    <string name="history_swipe_description">Desliza hacia arriba para ver el historial</string>
+    <string name="history_loading">Cargando…</string>
+    <string name="history_empty">Aún no hay tareas</string>
+    <string name="history_empty_hint">Desliza abajo para volver</string>
+    <string name="history_retry">Toca para reintentar</string>
+    <string name="history_back">Volver</string>
+    <string name="history_due_today">Hoy</string>
+    <string name="history_due_tomorrow">Mañana</string>
+    <string name="history_due_none">Sin fecha</string>
+    <string name="history_task_gone">La tarea ya no está</string>
+    <string name="history_update_failed">No se pudo actualizar</string>
+    <string name="error_history_no_connection">Sin conexión</string>
+    <string name="error_history_not_loaded">No pude cargar</string>
+    <string name="error_history_not_configured">Historial no disponible</string>
+    <string name="error_history_timed_out">Tardó demasiado</string>
 </resources>
