@@ -26,6 +26,7 @@ android {
         targetSdk = 37
         versionCode = 1
         versionName = "1.0"
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         // 10.0.2.2 es el localhost del PC visto desde el emulador.
         buildConfigField("String", "BACKEND_URL", "\"${localProperty("voicenoteai.backendUrl", "http://10.0.2.2:3000")}\"")
@@ -92,5 +93,11 @@ dependencies {
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.turbine)
     testImplementation(libs.ktor.client.mock)
+    androidTestImplementation(platform(libs.compose.bom))
+    androidTestImplementation(libs.ui.test.junit4)
+    androidTestImplementation(libs.androidx.test.ext.junit)
+    androidTestImplementation(libs.androidx.test.runner)
     debugImplementation(libs.ui.tooling)
+    debugImplementation(platform(libs.compose.bom))
+    debugImplementation(libs.ui.test.manifest)
 }

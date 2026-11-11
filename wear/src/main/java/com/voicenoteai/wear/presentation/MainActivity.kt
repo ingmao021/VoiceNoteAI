@@ -10,6 +10,7 @@ import com.voicenoteai.wear.VoiceNoteApplication
 import com.voicenoteai.wear.presentation.history.HistoryViewModel
 import com.voicenoteai.wear.presentation.home.HomeRoute
 import com.voicenoteai.wear.presentation.note.NoteViewModel
+import com.voicenoteai.wear.presentation.settings.SettingsViewModel
 import com.voicenoteai.wear.presentation.theme.VoiceNoteAITheme
 
 class MainActivity : ComponentActivity() {
@@ -17,6 +18,7 @@ class MainActivity : ComponentActivity() {
 
     private val noteViewModel: NoteViewModel by viewModels { container.noteViewModelFactory }
     private val historyViewModel: HistoryViewModel by viewModels { container.historyViewModelFactory }
+    private val settingsViewModel: SettingsViewModel by viewModels { container.settingsViewModelFactory }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         // Sin esta llamada el tema Theme.SplashScreen nunca cede a postSplashScreenTheme.
@@ -27,6 +29,7 @@ class MainActivity : ComponentActivity() {
                 HomeRoute(
                     noteViewModel = noteViewModel,
                     historyViewModel = historyViewModel,
+                    settingsViewModel = settingsViewModel,
                     onRecordingChanged = ::keepScreenOn,
                 )
             }

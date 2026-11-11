@@ -1,5 +1,6 @@
 package com.voicenoteai.wear.data.local
 
+import com.voicenoteai.wear.domain.model.DeleteTaskResult
 import com.voicenoteai.wear.domain.model.HistoryError
 import com.voicenoteai.wear.domain.model.LoadTasksResult
 import com.voicenoteai.wear.domain.model.SetTaskCompletedResult
@@ -14,4 +15,6 @@ class OfflineTaskHistoryRepository : TaskHistoryRepository {
 
     override suspend fun setCompleted(id: String, completed: Boolean) =
         SetTaskCompletedResult.Failed(HistoryError.NOT_CONFIGURED)
+
+    override suspend fun delete(id: String) = DeleteTaskResult.Failed(HistoryError.NOT_CONFIGURED)
 }
