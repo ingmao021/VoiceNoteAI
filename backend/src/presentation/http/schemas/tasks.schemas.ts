@@ -51,6 +51,29 @@ export const listTasksSchema = {
   },
 } as const;
 
+export const deleteTaskSchema = {
+  summary: 'Delete a task (swipe left in the watch history)',
+  security: [{ bearer: [] }],
+  params: {
+    type: 'object',
+    properties: { id: { type: 'string', minLength: 1 } },
+    required: ['id'],
+    additionalProperties: false,
+  },
+  response: {
+    200: {
+      description: 'Task deleted',
+      type: 'object',
+      properties: { id: { type: 'string' } },
+      required: ['id'],
+    },
+    401: errorResponse('`invalid_token`: missing or wrong app token'),
+    404: errorResponse('`task_not_found`: the task no longer exists'),
+    424: errorResponse('`google_access_revoked`: the Google account must be linked again (FA-13)'),
+    502: errorResponse('`tasks_provider_error`: Google Tasks rejected the request (FA-16)'),
+  },
+} as const;
+
 export const setTaskCompletedSchema = {
   summary: 'Mark a task as completed or pending',
   security: [{ bearer: [] }],

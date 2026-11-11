@@ -93,6 +93,16 @@ export class GoogleTasksGateway implements TaskGateway {
     }
   }
 
+  async delete(id: string): Promise<void> {
+    try {
+      await this.api.tasks.delete({ tasklist: DEFAULT_TASK_LIST, task: id });
+    } catch (e) {
+      if (isAccessRevoked(e)) throw new TaskProviderAccessRevokedError(e);
+      if (isNotFound(e)) throw new TaskNotFoundError(e);
+      throw new TaskProviderError(e);
+    }
+  }
+
   private async insertParent(note: StructuredNote): Promise<string> {
     try {
       const { data } = await this.api.tasks.insert({

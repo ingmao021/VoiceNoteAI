@@ -1,4 +1,5 @@
 import { CreateNoteUseCase } from '../application/use-cases/create-note.use-case.js';
+import { DeleteTaskUseCase } from '../application/use-cases/delete-task.use-case.js';
 import { ListRecentTasksUseCase } from '../application/use-cases/list-recent-tasks.use-case.js';
 import { SetTaskCompletedUseCase } from '../application/use-cases/set-task-completed.use-case.js';
 import type { NoteStructurer } from '../application/ports/note-structurer.js';
@@ -17,6 +18,7 @@ export function createContainer(config: AppConfig): AppDependencies {
     createNote: new CreateNoteUseCase(createStructurer(config), tasks),
     listTasks: new ListRecentTasksUseCase(tasks, config.timeZone),
     setTaskCompleted: new SetTaskCompletedUseCase(tasks),
+    deleteTask: new DeleteTaskUseCase(tasks),
   };
 }
 

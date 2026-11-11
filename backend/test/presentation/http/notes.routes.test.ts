@@ -3,6 +3,7 @@ import type { FastifyInstance } from 'fastify';
 import type { NoteStructurer } from '../../../src/application/ports/note-structurer.js';
 import { CreateNoteUseCase } from '../../../src/application/use-cases/create-note.use-case.js';
 import { ListRecentTasksUseCase } from '../../../src/application/use-cases/list-recent-tasks.use-case.js';
+import { DeleteTaskUseCase } from '../../../src/application/use-cases/delete-task.use-case.js';
 import { SetTaskCompletedUseCase } from '../../../src/application/use-cases/set-task-completed.use-case.js';
 import { TaskProviderAccessRevokedError, TaskProviderError } from '../../../src/domain/errors/task-provider-errors.js';
 import { RawNoteStructurer } from '../../../src/infrastructure/ai/raw-note-structurer.js';
@@ -23,6 +24,7 @@ async function start(structurer: NoteStructurer = new RawNoteStructurer()) {
       createNote: new CreateNoteUseCase(structurer, tasks),
       listTasks: new ListRecentTasksUseCase(tasks, 'America/Bogota'),
       setTaskCompleted: new SetTaskCompletedUseCase(tasks),
+      deleteTask: new DeleteTaskUseCase(tasks),
     },
     { logger: false },
   );
