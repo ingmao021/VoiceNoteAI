@@ -17,6 +17,13 @@ import com.voicenoteai.wear.data.speech.SystemDictationContract
 import com.voicenoteai.wear.domain.device.BatteryMonitor
 import com.voicenoteai.wear.domain.model.CaptureMode
 import com.voicenoteai.wear.domain.repository.NoteRepository
+import com.voicenoteai.wear.data.reminder.AlarmReminderScheduler
+import com.voicenoteai.wear.domain.repository.ReminderScheduler
+import com.voicenoteai.wear.domain.repository.ReminderSettings
+import com.voicenoteai.wear.data.reminder.PreferencesReminderSettings
+import com.voicenoteai.wear.data.reminder.PreferencesUserSettings
+import com.voicenoteai.wear.domain.repository.UserSettings
+import com.voicenoteai.wear.presentation.settings.SettingsViewModel
 import com.voicenoteai.wear.domain.repository.TaskHistoryRepository
 import com.voicenoteai.wear.domain.speech.VoiceRecognizer
 import com.voicenoteai.wear.domain.usecase.CheckCapturePreconditionsUseCase
@@ -58,6 +65,12 @@ class AppContainer(context: Context) {
         }
     }
 
+    private val reminderScheduler: ReminderScheduler by lazy { AlarmReminderScheduler(context) }
+
+    private val reminderSettings: ReminderSettings by lazy { PreferencesReminderSettings(context) }
+
+    private val userSettings: UserSettings by lazy { PreferencesUserSettings(context) }
+
     private val taskHistoryRepository: TaskHistoryRepository by lazy {
         if (hasBackend) HttpTaskHistoryRepository(backendApi) else OfflineTaskHistoryRepository()
     }
@@ -81,7 +94,11 @@ class AppContainer(context: Context) {
     }
 
     val historyViewModelFactory: ViewModelProvider.Factory = viewModelFactory {
-        initializer { HistoryViewModel(taskHistoryRepository) }
+        initializer { HistoryViewModel(taskHistoryRepository, reminderScheduler) }
+    }
+
+    val settingsViewModelFactory: ViewModelProvider.Factory = viewModelFactory {
+        initializer { SettingsViewModel(reminderSettings, userSettings) }
     }
 
     /** Sin `RecognitionService` se recurre al dictado del sistema; sin ninguno de los dos, FA-21. */

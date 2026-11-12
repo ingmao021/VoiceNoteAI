@@ -44,7 +44,7 @@ texto viaja al backend. La definición completa del producto está en [`docs/PRD
 - Errores con una acción clara en el mismo botón: reintentar sin volver a hablar, abrir ajustes o volver.
 - Respaldo con la pantalla de dictado del sistema en dispositivos sin servicio de reconocimiento.
 - Calentamiento del servidor al abrir la app, para que el primer envío no espere al arranque en frío.
-- Diseño de felpa propio (fondo crema, parches de color, tipografía Lilita One), pensado para pantallas redondas.
+- Diseño «Volt» propio (fondo negro OLED, verde #cbfe00 y azul #009bfe, Material 3 Expressive), pensado para pantallas redondas. Maqueta: `docs/mockup_smartwatch_volt.html`.
 
 **Backend**
 - `POST /v1/notes`: estructura el texto con **Gemini** (título, texto limpio, subtareas y fecha relativa
@@ -299,7 +299,7 @@ VoiceNoteAI/
 │   │   ├── data/                  Reconocedor de voz, cliente HTTP (Ktor), batería
 │   │   ├── presentation/          Nota, historial, estados, ViewModels y tema (Compose)
 │   │   └── di/AppContainer.kt     Inyección de dependencias manual
-│   ├── src/main/res/              Imágenes de felpa, fuente, textos e icono
+│   ├── src/main/res/              Textos e icono
 │   ├── src/debug/                 Permite HTTP local solo en debug
 │   ├── src/test/                  Pruebas unitarias
 │   └── src/source/icon/           Imagen original del icono de la app
@@ -338,7 +338,7 @@ infraestructura se conecta en un único punto de composición.
 5. Normas del código:
    - Comentarios en español, que expliquen el *porqué*.
    - Sin código muerto ni registros de depuración.
-   - Los cambios de interfaz siguen la guía `.claude/skills/wear-ui-ux/SKILL.md` (composición, paleta y accesibilidad).
+   - Los cambios de interfaz siguen la guía `.claude/skills/smartwatch-app-design/SKILL.md` (composición, paleta y accesibilidad).
    - Los secretos nunca se suben al repositorio: van en `.env`, `local.properties` o el panel de Render.
 
 ## Licencia
@@ -347,7 +347,6 @@ Este proyecto **no tiene todavía una licencia de código abierto**: todos los d
 Para usarlo, modificarlo o distribuirlo, hay que pedir permiso.
 
 Componentes de terceros incluidos:
-- Fuente **Lilita One**: SIL Open Font License 1.1 ([`wear/licenses/OFL-LilitaOne.txt`](wear/licenses/OFL-LilitaOne.txt)).
 - Skill **wear-compose-m3** de Google: Apache License 2.0 ([`.claude/skills/wear-compose-m3/LICENSE.txt`](.claude/skills/wear-compose-m3/LICENSE.txt)).
 
 ## Autor y contacto

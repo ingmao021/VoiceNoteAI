@@ -20,4 +20,10 @@ export interface TaskGateway {
    * [TaskProviderError].
    */
   setCompleted(id: string, completed: boolean): Promise<void>;
+
+  /**
+   * Elimina una tarea (y sus subtareas). Lanza [TaskNotFoundError], [TaskProviderAccessRevokedError]
+   * o [TaskProviderError].
+   */
+  delete(id: string): Promise<void>;
 }

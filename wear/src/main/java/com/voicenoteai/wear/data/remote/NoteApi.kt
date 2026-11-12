@@ -9,6 +9,7 @@ import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.timeout
 import io.ktor.client.request.bearerAuth
+import io.ktor.client.request.delete
 import io.ktor.client.request.get
 import io.ktor.client.request.parameter
 import io.ktor.client.request.patch
@@ -60,6 +61,13 @@ class NoteApi(
             bearerAuth(token)
             contentType(ContentType.Application.Json)
             setBody(UpdateTaskRequest(completed))
+            timeout { requestTimeoutMillis = HISTORY_TIMEOUT_MS }
+        }
+
+    /** Elimina una tarea. */
+    suspend fun deleteTask(id: String): HttpResponse =
+        client.delete("$baseUrl/v1/tasks/${id.encodeURLPathPart()}") {
+            bearerAuth(token)
             timeout { requestTimeoutMillis = HISTORY_TIMEOUT_MS }
         }
 

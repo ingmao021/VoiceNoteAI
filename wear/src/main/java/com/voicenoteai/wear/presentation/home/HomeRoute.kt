@@ -1,6 +1,7 @@
 package com.voicenoteai.wear.presentation.home
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
@@ -16,14 +17,17 @@ import com.voicenoteai.wear.presentation.history.HistoryViewModel
 import com.voicenoteai.wear.presentation.note.NoteRoute
 import com.voicenoteai.wear.presentation.note.NoteUiState
 import com.voicenoteai.wear.presentation.note.NoteViewModel
-import com.voicenoteai.wear.presentation.theme.FurBackground
+import com.voicenoteai.wear.presentation.settings.SettingsRoute
+import com.voicenoteai.wear.presentation.settings.SettingsViewModel
+import com.voicenoteai.wear.presentation.theme.VoltPalette
 import kotlinx.coroutines.launch
 
-private const val NOTE_PAGE = 0
-private const val HISTORY_PAGE = 1
+private const val SETTINGS_PAGE = 0
+private const val NOTE_PAGE = 1
+private const val HISTORY_PAGE = 2
 
 /**
- * Las dos páginas de la app: la nota (0) y el historial (1).
+ * Las tres páginas de la app: ajustes (0, arriba), la nota (1, la de inicio) y el historial (2, abajo).
  *
  * El gesto de subir solo se bloquea mientras la nota está ocupada (grabando o procesando), para que
  * un deslizamiento no interrumpa la captura. En el historial el gesto sigue activo para poder volver.
@@ -32,10 +36,14 @@ private const val HISTORY_PAGE = 1
 fun HomeRoute(
     noteViewModel: NoteViewModel,
     historyViewModel: HistoryViewModel,
+    settingsViewModel: SettingsViewModel,
     onRecordingChanged: (Boolean) -> Unit,
 ) {
+    val reminderMinutes by settingsViewModel.reminderMinutes.collectAsStateWithLifecycle()
+    val hapticsEnabled by settingsViewModel.hapticsEnabled.collectAsStateWithLifecycle()
+    val confirmDelete by settingsViewModel.confirmDelete.collectAsStateWithLifecycle()
     val noteState by noteViewModel.state.collectAsStateWithLifecycle()
-    val pagerState = rememberPagerState(pageCount = { 2 })
+    val pagerState = rememberPagerState(initialPage = NOTE_PAGE, pageCount = { 3 })
     val scope = rememberCoroutineScope()
 
     val onNotePage = pagerState.currentPage == NOTE_PAGE
@@ -61,8 +69,7 @@ fun HomeRoute(
         if (pagerState.settledPage == HISTORY_PAGE) historyViewModel.refresh()
     }
 
-    Box(Modifier.fillMaxSize()) {
-        FurBackground()
+    Box(Modifier.fillMaxSize().background(VoltPalette.Background)) {
         VerticalPager(
             state = pagerState,
             modifier = Modifier.fillMaxSize(),
@@ -70,12 +77,21 @@ fun HomeRoute(
             userScrollEnabled = !busy || !onNotePage,
         ) { page ->
             when (page) {
+                SETTINGS_PAGE -> SettingsRoute(viewModel = settingsViewModel, onClose = ::closeHistory)
                 NOTE_PAGE -> NoteRoute(
                     viewModel = noteViewModel,
                     onRecordingChanged = onRecordingChanged,
                     onOpenHistory = ::openHistory,
+                    hapticsEnabled = hapticsEnabled,
                 )
-                HISTORY_PAGE -> HistoryRoute(viewModel = historyViewModel, onClose = ::closeHistory)
+                HISTORY_PAGE -> HistoryRoute(
+                    viewModel = historyViewModel,
+                    onClose = ::closeHistory,
+                    active = pagerState.currentPage == HISTORY_PAGE,
+                    reminderMinutes = reminderMinutes,
+                    hapticsEnabled = hapticsEnabled,
+                    confirmDelete = confirmDelete,
+                )
             }
         }
     }

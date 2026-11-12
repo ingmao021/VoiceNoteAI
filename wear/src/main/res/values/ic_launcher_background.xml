@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Gris del círculo de wear/src/source/icon/icon.png -->
-    <color name="ic_launcher_background">#D9D9D9</color>
+    <!-- Verde muy oscuro (borde) y verde oscuro (centro) del fondo del icono; el logo de
+         wear/src/source/icon/new_icon.webp se dibuja encima en verde claro (#96EB64). -->
+    <color name="ic_launcher_background">#08180E</color>
+    <color name="ic_launcher_background_center">#1E4628</color>
 </resources>

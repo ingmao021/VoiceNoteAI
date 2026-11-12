@@ -28,6 +28,14 @@ export class FakeTaskGateway implements TaskGateway {
     if (this.completeFailure) throw this.completeFailure;
     this.completedCalls.push({ id, completed });
   }
+
+  deletedIds: string[] = [];
+  deleteFailure: Error | null = null;
+
+  async delete(id: string) {
+    if (this.deleteFailure) throw this.deleteFailure;
+    this.deletedIds.push(id);
+  }
 }
 
 export const fixedStructurer = (note: StructuredNote): NoteStructurer => ({

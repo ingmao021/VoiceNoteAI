@@ -14,6 +14,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
@@ -35,6 +36,7 @@ fun NoteRoute(
     viewModel: NoteViewModel,
     onRecordingChanged: (Boolean) -> Unit,
     onOpenHistory: () -> Unit = {},
+    hapticsEnabled: Boolean = true,
 ) {
     val context = LocalContext.current
     val activity = LocalActivity.current
@@ -65,7 +67,8 @@ fun NoteRoute(
         }
     }
 
-    LaunchedEffect(viewModel) { viewModel.haptics.collect(hapticPlayer::play) }
+    val hapticsOn by rememberUpdatedState(hapticsEnabled)
+    LaunchedEffect(viewModel) { viewModel.haptics.collect { if (hapticsOn) hapticPlayer.play(it) } }
 
     val recording = state is NoteUiState.Recording
     LaunchedEffect(recording) { onRecordingChanged(recording) }

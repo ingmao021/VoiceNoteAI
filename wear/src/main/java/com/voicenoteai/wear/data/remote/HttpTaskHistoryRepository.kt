@@ -2,6 +2,7 @@ package com.voicenoteai.wear.data.remote
 
 import android.util.Log
 import com.voicenoteai.wear.data.remote.dto.TaskListResponse
+import com.voicenoteai.wear.domain.model.DeleteTaskResult
 import com.voicenoteai.wear.domain.model.HistoryError
 import com.voicenoteai.wear.domain.model.HistoryTask
 import com.voicenoteai.wear.domain.model.LoadTasksResult
@@ -74,6 +75,30 @@ class HttpTaskHistoryRepository(private val api: NoteApi) : TaskHistoryRepositor
     } catch (e: Exception) {
         Log.e(TAG, "Unexpected failure while updating the task", e)
         SetTaskCompletedResult.Failed(HistoryError.NOT_LOADED)
+    }
+
+    override suspend fun delete(id: String): DeleteTaskResult = try {
+        val response = api.deleteTask(id)
+        when (response.status) {
+            HttpStatusCode.OK -> DeleteTaskResult.Deleted
+            HttpStatusCode.Unauthorized,
+            HttpStatusCode.FailedDependency -> DeleteTaskResult.Failed(HistoryError.RELINK_ACCOUNT)
+            HttpStatusCode.NotFound -> DeleteTaskResult.Failed(HistoryError.TASK_NOT_FOUND)
+            else -> {
+                Log.w(TAG, "Unexpected task delete response: ${response.status}")
+                DeleteTaskResult.Failed(HistoryError.NOT_LOADED)
+            }
+        }
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: HttpRequestTimeoutException) {
+        DeleteTaskResult.Failed(HistoryError.TIMED_OUT)
+    } catch (e: IOException) {
+        Log.w(TAG, "Backend unreachable: ${e.javaClass.simpleName}")
+        DeleteTaskResult.Failed(HistoryError.NO_CONNECTION)
+    } catch (e: Exception) {
+        Log.e(TAG, "Unexpected failure while deleting the task", e)
+        DeleteTaskResult.Failed(HistoryError.NOT_LOADED)
     }
 
     private fun parseDate(value: String): LocalDate? = parseDateOrNull(value)

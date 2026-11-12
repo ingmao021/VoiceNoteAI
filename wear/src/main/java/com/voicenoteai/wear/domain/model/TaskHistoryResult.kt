@@ -16,6 +16,13 @@ sealed interface SetTaskCompletedResult {
     data class Failed(val error: HistoryError) : SetTaskCompletedResult
 }
 
+/** Resultado de eliminar una tarea. */
+sealed interface DeleteTaskResult {
+    data object Deleted : DeleteTaskResult
+
+    data class Failed(val error: HistoryError) : DeleteTaskResult
+}
+
 /**
  * Errores del historial, con el mismo criterio que [SubmissionError] para los reintentos.
  * [retryable] indica si tiene sentido ofrecer «Toca para reintentar».
