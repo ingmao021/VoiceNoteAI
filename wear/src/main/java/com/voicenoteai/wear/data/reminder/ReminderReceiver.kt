@@ -10,6 +10,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import com.voicenoteai.wear.R
+import com.voicenoteai.wear.domain.repository.AlertMode
 import com.voicenoteai.wear.presentation.MainActivity
 
 /** Publica la notificación del recordatorio cuando salta la alarma. */
@@ -22,20 +23,14 @@ class ReminderReceiver : BroadcastReceiver() {
         ) return
 
         val manager = context.getSystemService(NotificationManager::class.java) ?: return
-        manager.createNotificationChannel(
-            NotificationChannel(
-                CHANNEL_ID,
-                context.getString(R.string.reminder_channel),
-                NotificationManager.IMPORTANCE_HIGH,
-            ),
-        )
+        val channelId = channelFor(context, manager, PreferencesUserSettings.currentAlertMode(context))
         val open = PendingIntent.getActivity(
             context,
             0,
             Intent(context, MainActivity::class.java),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
-        val notification = Notification.Builder(context, CHANNEL_ID)
+        val notification = Notification.Builder(context, channelId)
             .setSmallIcon(R.mipmap.ic_launcher)
             .setContentTitle(context.getString(R.string.reminder_title))
             .setContentText(title)
@@ -45,9 +40,34 @@ class ReminderReceiver : BroadcastReceiver() {
         manager.notify(id.hashCode(), notification)
     }
 
+    /**
+     * Un canal por modo: Android no deja cambiar sonido ni vibración de un canal ya creado.
+     * `task_reminders` conserva el id original (sonido y vibración).
+     */
+    private fun channelFor(context: Context, manager: NotificationManager, mode: AlertMode): String {
+        val (id, importance) = when (mode) {
+            AlertMode.SOUND_AND_VIBRATE -> "task_reminders" to NotificationManager.IMPORTANCE_HIGH
+            AlertMode.VIBRATE -> "task_reminders_vibrate" to NotificationManager.IMPORTANCE_HIGH
+            AlertMode.SILENT -> "task_reminders_silent" to NotificationManager.IMPORTANCE_LOW
+        }
+        val channel = NotificationChannel(id, context.getString(R.string.reminder_channel), importance)
+        when (mode) {
+            AlertMode.SOUND_AND_VIBRATE -> channel.enableVibration(true)
+            AlertMode.VIBRATE -> {
+                channel.setSound(null, null)
+                channel.enableVibration(true)
+            }
+            AlertMode.SILENT -> {
+                channel.setSound(null, null)
+                channel.enableVibration(false)
+            }
+        }
+        manager.createNotificationChannel(channel)
+        return id
+    }
+
     companion object {
         const val EXTRA_TITLE = "title"
         const val EXTRA_ID = "id"
-        private const val CHANNEL_ID = "task_reminders"
     }
 }

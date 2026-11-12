@@ -21,6 +21,8 @@ import com.voicenoteai.wear.data.reminder.AlarmReminderScheduler
 import com.voicenoteai.wear.domain.repository.ReminderScheduler
 import com.voicenoteai.wear.domain.repository.ReminderSettings
 import com.voicenoteai.wear.data.reminder.PreferencesReminderSettings
+import com.voicenoteai.wear.data.reminder.PreferencesUserSettings
+import com.voicenoteai.wear.domain.repository.UserSettings
 import com.voicenoteai.wear.presentation.settings.SettingsViewModel
 import com.voicenoteai.wear.domain.repository.TaskHistoryRepository
 import com.voicenoteai.wear.domain.speech.VoiceRecognizer
@@ -67,6 +69,8 @@ class AppContainer(context: Context) {
 
     private val reminderSettings: ReminderSettings by lazy { PreferencesReminderSettings(context) }
 
+    private val userSettings: UserSettings by lazy { PreferencesUserSettings(context) }
+
     private val taskHistoryRepository: TaskHistoryRepository by lazy {
         if (hasBackend) HttpTaskHistoryRepository(backendApi) else OfflineTaskHistoryRepository()
     }
@@ -94,7 +98,7 @@ class AppContainer(context: Context) {
     }
 
     val settingsViewModelFactory: ViewModelProvider.Factory = viewModelFactory {
-        initializer { SettingsViewModel(reminderSettings) }
+        initializer { SettingsViewModel(reminderSettings, userSettings) }
     }
 
     /** Sin `RecognitionService` se recurre al dictado del sistema; sin ninguno de los dos, FA-21. */

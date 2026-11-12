@@ -12,6 +12,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.voicenoteai.wear.domain.repository.ReminderSettings
@@ -23,7 +24,9 @@ fun HistoryRoute(
     viewModel: HistoryViewModel,
     onClose: () -> Unit,
     active: Boolean = true,
-    reminderOptions: List<Long> = ReminderSettings.DEFAULTS,
+    reminderMinutes: Long = ReminderSettings.DEFAULT_MINUTES,
+    hapticsEnabled: Boolean = true,
+    confirmDelete: Boolean = false,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
@@ -35,7 +38,8 @@ fun HistoryRoute(
         pendingRemind = null
     }
 
-    LaunchedEffect(viewModel) { viewModel.haptics.collect(hapticPlayer::play) }
+    val hapticsOn by rememberUpdatedState(hapticsEnabled)
+    LaunchedEffect(viewModel) { viewModel.haptics.collect { if (hapticsOn) hapticPlayer.play(it) } }
 
     HistoryScreen(
         state = state,
@@ -53,7 +57,8 @@ fun HistoryRoute(
         onRetry = viewModel::refresh,
         onClose = onClose,
         active = active,
-        reminderOptions = reminderOptions,
+        reminderMinutes = reminderMinutes,
+        confirmDelete = confirmDelete,
     )
 }
 

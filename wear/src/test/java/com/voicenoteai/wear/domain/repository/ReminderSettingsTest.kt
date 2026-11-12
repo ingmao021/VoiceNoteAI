@@ -5,17 +5,18 @@ import org.junit.Test
 
 class ReminderSettingsTest {
     @Test
-    fun `step moves to the next and previous rung`() {
+    fun `step moves one minute at a time up to ten then by five`() {
+        assertEquals(2L, ReminderSettings.step(1, +1))
+        assertEquals(10L, ReminderSettings.step(9, +1))
         assertEquals(15L, ReminderSettings.step(10, +1))
-        assertEquals(5L, ReminderSettings.step(10, -1))
-        assertEquals(90L, ReminderSettings.step(60, +1))
-        assertEquals(45L, ReminderSettings.step(60, -1))
+        assertEquals(10L, ReminderSettings.step(15, -1))
+        assertEquals(55L, ReminderSettings.step(60, -1))
     }
 
     @Test
-    fun `step snaps custom values and stays within the limits`() {
-        assertEquals(60L, ReminderSettings.step(50, +1))
-        assertEquals(5L, ReminderSettings.step(5, -1))
-        assertEquals(1_440L, ReminderSettings.step(1_440, +1))
+    fun `step snaps custom values and stays within 1 to 60`() {
+        assertEquals(55L, ReminderSettings.step(52, +1))
+        assertEquals(1L, ReminderSettings.step(1, -1))
+        assertEquals(60L, ReminderSettings.step(60, +1))
     }
 }

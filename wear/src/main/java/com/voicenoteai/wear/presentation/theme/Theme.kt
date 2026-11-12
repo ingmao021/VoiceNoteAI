@@ -2,8 +2,13 @@ package com.voicenoteai.wear.presentation.theme
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 import androidx.wear.compose.material3.ColorScheme
 import androidx.wear.compose.material3.MaterialTheme
+import androidx.wear.compose.material3.Typography
+import com.voicenoteai.wear.R
 
 /**
  * Paleta «Volt» (skill `smartwatch-app-design`, §2): fondo negro OLED, verde #cbfe00 como único
@@ -57,7 +62,19 @@ private val colorScheme = ColorScheme(
     onError = VoltPalette.OnError,
 )
 
+/** Fuente de la app: Poppins (OFL), incluida en `res/font` para que funcione sin conexión. */
+val AppFontFamily = FontFamily(
+    Font(R.font.poppins_regular, FontWeight.Normal),
+    Font(R.font.poppins_medium, FontWeight.Medium),
+    Font(R.font.poppins_semibold, FontWeight.SemiBold),
+    Font(R.font.poppins_bold, FontWeight.Bold),
+)
+
 @Composable
 fun VoiceNoteAITheme(content: @Composable () -> Unit) {
-    MaterialTheme(colorScheme = colorScheme, content = content)
+    MaterialTheme(
+        colorScheme = colorScheme,
+        typography = Typography(defaultFontFamily = AppFontFamily),
+        content = content,
+    )
 }

@@ -2,20 +2,20 @@ package com.voicenoteai.wear.domain.repository
 
 import kotlinx.coroutines.flow.StateFlow
 
-/** Tiempos (en minutos) que ofrece el selector de aviso del historial; el usuario los define en Ajustes. */
+/** Minutos de antelación del aviso al deslizar una tarea a la derecha; el usuario lo define en Ajustes. */
 interface ReminderSettings {
-    val options: StateFlow<List<Long>>
+    val minutes: StateFlow<Long>
 
-    /** Cambia la opción [index] a [minutes], acotada a [MIN_MINUTES]..[MAX_MINUTES]. */
-    fun setOption(index: Int, minutes: Long)
+    /** Cambia el tiempo a [minutes], acotado a [MIN_MINUTES]..[MAX_MINUTES]. */
+    fun setMinutes(minutes: Long)
 
     companion object {
-        val DEFAULTS = listOf(10L, 30L, 60L)
-        const val MIN_MINUTES = 5L
-        const val MAX_MINUTES = 1_440L
+        const val DEFAULT_MINUTES = 10L
+        const val MIN_MINUTES = 1L
+        const val MAX_MINUTES = 60L
 
-        /** Escalones de los botones − y +: pasos cortos para minutos y más largos para horas. */
-        val STEPS = listOf(5L, 10L, 15L, 20L, 30L, 45L, 60L, 90L, 120L, 180L, 240L, 360L, 480L, 720L, 1_440L)
+        /** Escalones de − y +: de minuto en minuto hasta 10 y de 5 en 5 hasta 60. */
+        val STEPS = (1L..10L).toList() + (15L..60L step 5L).toList()
 
         /** Siguiente valor de [STEPS] en la dirección de [delta] (+1 / −1); se queda en el extremo. */
         fun step(current: Long, delta: Int): Long {

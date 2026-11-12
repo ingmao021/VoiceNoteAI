@@ -39,7 +39,9 @@ fun HomeRoute(
     settingsViewModel: SettingsViewModel,
     onRecordingChanged: (Boolean) -> Unit,
 ) {
-    val reminderOptions by settingsViewModel.options.collectAsStateWithLifecycle()
+    val reminderMinutes by settingsViewModel.reminderMinutes.collectAsStateWithLifecycle()
+    val hapticsEnabled by settingsViewModel.hapticsEnabled.collectAsStateWithLifecycle()
+    val confirmDelete by settingsViewModel.confirmDelete.collectAsStateWithLifecycle()
     val noteState by noteViewModel.state.collectAsStateWithLifecycle()
     val pagerState = rememberPagerState(initialPage = NOTE_PAGE, pageCount = { 3 })
     val scope = rememberCoroutineScope()
@@ -80,12 +82,15 @@ fun HomeRoute(
                     viewModel = noteViewModel,
                     onRecordingChanged = onRecordingChanged,
                     onOpenHistory = ::openHistory,
+                    hapticsEnabled = hapticsEnabled,
                 )
                 HISTORY_PAGE -> HistoryRoute(
                     viewModel = historyViewModel,
                     onClose = ::closeHistory,
                     active = pagerState.currentPage == HISTORY_PAGE,
-                    reminderOptions = reminderOptions,
+                    reminderMinutes = reminderMinutes,
+                    hapticsEnabled = hapticsEnabled,
+                    confirmDelete = confirmDelete,
                 )
             }
         }

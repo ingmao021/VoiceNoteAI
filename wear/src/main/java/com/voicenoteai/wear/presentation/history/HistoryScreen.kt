@@ -96,8 +96,8 @@ private class HistoryLayout(side: Dp, fontScale: Float) {
     val bottom: Dp = side * 0.20f
 
     val titleSp: TextUnit = if (large) 16.sp else 15.sp
-    val taskSp: TextUnit = if (large) 14.sp else 13.sp
-    val dueSp: TextUnit = if (large) 12.sp else 11.sp
+    val taskSp: TextUnit = if (large) 13.sp else 12.sp
+    val dueSp: TextUnit = 11.sp
 
     /** El bloque de estado comparte sitio con el botón del borde: se encoge en pantallas pequeñas. */
     val badge: Dp = when {
@@ -107,9 +107,9 @@ private class HistoryLayout(side: Dp, fontScale: Float) {
     }
     /** Separación del bloque de estado: se aprieta cuando la fuente ampliada pide más alto. */
     val stateGap: Dp = if (compact) 4.dp else 6.dp
-    val check: Dp = if (large) 34.dp else 30.dp
-    val rowPadding: Dp = 8.dp
-    val rowHeight: Dp = if (large) 52.dp else 48.dp
+    val check: Dp = if (large) 26.dp else 24.dp
+    val rowPadding: Dp = 6.dp
+    val rowHeight: Dp = if (large) 42.dp else 38.dp
 }
 
 /**
@@ -129,10 +129,12 @@ fun HistoryScreen(
     modifier: Modifier = Modifier,
     /** `true` mientras la página está a la vista: el lazo se balancea al llegar. */
     active: Boolean = true,
-    /** Tiempos del selector de aviso (se definen en Ajustes). */
-    reminderOptions: List<Long> = ReminderSettings.DEFAULTS,
+    /** Minutos de antelación del aviso al deslizar a la derecha (se define en Ajustes). */
+    reminderMinutes: Long = ReminderSettings.DEFAULT_MINUTES,
+    /** `true`: deslizar para borrar pide confirmación antes de eliminar. */
+    confirmDelete: Boolean = false,
 ) {
-    var pickerFor by remember { mutableStateOf<String?>(null) }
+    var deleteFor by remember { mutableStateOf<String?>(null) }
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
         val side = min(maxWidth, maxHeight)
         val layout = HistoryLayout(side, LocalDensity.current.fontScale)
@@ -153,7 +155,13 @@ fun HistoryScreen(
                     is HistoryUiState.Loading -> LoadingContent(layout)
                     is HistoryUiState.Empty -> EmptyContent(layout, onClose)
                     is HistoryUiState.Error -> ErrorContent(layout, state, onRetry, onClose)
-                    is HistoryUiState.Content -> HistoryList(layout, state, onToggle, onDelete) { pickerFor = it }
+                    is HistoryUiState.Content -> HistoryList(
+                        layout,
+                        state,
+                        onToggle,
+                        onDelete = { id -> if (confirmDelete) deleteFor = id else onDelete(id) },
+                        confirmDelete = confirmDelete,
+                    ) { id -> onRemind(id, reminderMinutes) }
                 }
             }
             // Una pestaña que cuelga del borde superior, con la flecha hacia abajo: pulsarla o arrastrarla
@@ -181,12 +189,11 @@ fun HistoryScreen(
             ) {
                 EdgeIcon(AppIcons.ChevronDownRounded, size = 24.dp)
             }
-            pickerFor?.let { id ->
-                RemindPicker(
+            deleteFor?.let { id ->
+                DeleteConfirm(
                     layout = layout,
-                    options = reminderOptions,
-                    onPick = { minutes -> pickerFor = null; onRemind(id, minutes) },
-                    onCancel = { pickerFor = null },
+                    onConfirm = { deleteFor = null; onDelete(id) },
+                    onCancel = { deleteFor = null },
                 )
             }
             }
@@ -221,6 +228,7 @@ private fun ColumnScope.HistoryList(
     state: HistoryUiState.Content,
     onToggle: (String, Boolean) -> Unit,
     onDelete: (String) -> Unit,
+    confirmDelete: Boolean,
     onRemind: (String) -> Unit,
 ) {
     if (state.messageRes != null) {
@@ -247,13 +255,14 @@ private fun ColumnScope.HistoryList(
         // La lista llega hasta el borde de la pantalla (nada de franja negra tapando filas); la
         // holgura va en el contenido, así la última fila se puede desplazar hasta quedar visible.
         contentPadding = PaddingValues(top = 2.dp, bottom = layout.bottom),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
+        verticalArrangement = Arrangement.spacedBy(3.dp),
     ) {
         items(items = state.tasks, key = { it.id }) { task ->
             SwipeToDeleteRow(
                 onDelete = { onDelete(task.id) },
                 onRemind = { onRemind(task.id) },
                 layout = layout,
+                returnAfterDelete = confirmDelete,
                 modifier = Modifier.padding(horizontal = layout.horizontal),
             ) {
                 TaskRow(
@@ -270,13 +279,14 @@ private fun ColumnScope.HistoryList(
 
 /**
  * Izquierda: pasado el umbral la fila se borra al soltar. Derecha: pasado el umbral programa un
- * recordatorio y la fila vuelve a su sitio.
+ * recordatorio (con el tiempo de Ajustes) y la fila vuelve a su sitio.
  */
 @Composable
 private fun SwipeToDeleteRow(
     onDelete: () -> Unit,
     onRemind: () -> Unit,
     layout: HistoryLayout,
+    returnAfterDelete: Boolean,
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit,
 ) {
@@ -340,6 +350,8 @@ private fun SwipeToDeleteRow(
                             scope.launch {
                                 if (offset.value <= -threshold) {
                                     onDelete()
+                                    // Con confirmación la fila sigue en la lista: vuelve a su sitio.
+                                    if (returnAfterDelete) offset.animateTo(0f)
                                 } else if (offset.value >= threshold) {
                                     onRemind()
                                     offset.animateTo(0f)
@@ -355,9 +367,9 @@ private fun SwipeToDeleteRow(
     }
 }
 
-/** Selector de tiempo del aviso: tocar fuera o «Cancelar» lo cierra sin programar nada. */
+/** Confirmación de borrado: «Eliminar» borra; tocar fuera o «Cancelar» la deja como estaba. */
 @Composable
-private fun RemindPicker(layout: HistoryLayout, options: List<Long>, onPick: (Long) -> Unit, onCancel: () -> Unit) {
+private fun DeleteConfirm(layout: HistoryLayout, onConfirm: () -> Unit, onCancel: () -> Unit) {
     val shape = RoundedCornerShape(percent = 50)
     Box(
         contentAlignment = Alignment.Center,
@@ -365,7 +377,7 @@ private fun RemindPicker(layout: HistoryLayout, options: List<Long>, onPick: (Lo
             .fillMaxSize()
             .background(VoltPalette.Background.copy(alpha = 0.92f))
             .clickable(onClick = onCancel)
-            .testTag("remindPicker"),
+            .testTag("deleteConfirm"),
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -373,29 +385,27 @@ private fun RemindPicker(layout: HistoryLayout, options: List<Long>, onPick: (Lo
             modifier = Modifier.padding(horizontal = layout.horizontal * 1.6f),
         ) {
             Text(
-                text = stringResource(R.string.history_reminder_pick),
+                text = stringResource(R.string.history_delete_confirm),
                 fontSize = layout.dueSp,
                 fontWeight = FontWeight.SemiBold,
                 color = VoltPalette.OnSurface,
             )
-            options.forEach { minutes ->
-                Box(
-                    contentAlignment = Alignment.Center,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(min = 40.dp)
-                        .clip(shape)
-                        .background(VoltPalette.SecondaryContainer)
-                        .clickable { onPick(minutes) }
-                        .testTag("remindOption$minutes"),
-                ) {
-                    Text(
-                        text = durationLabel(minutes),
-                        fontSize = layout.taskSp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = VoltPalette.OnSurface,
-                    )
-                }
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 40.dp)
+                    .clip(shape)
+                    .background(VoltPalette.Error)
+                    .clickable(onClick = onConfirm)
+                    .testTag("deleteConfirmYes"),
+            ) {
+                Text(
+                    text = stringResource(R.string.history_delete_action),
+                    fontSize = layout.taskSp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color.White,
+                )
             }
             Text(
                 text = stringResource(R.string.history_reminder_cancel),
@@ -435,7 +445,7 @@ private fun TaskRow(
                 role = Role.Checkbox,
                 onValueChange = { onToggle(task.id, it) },
             )
-            .padding(start = layout.rowPadding, end = 18.dp, top = 6.dp, bottom = 6.dp),
+            .padding(start = layout.rowPadding, end = 14.dp, top = 3.dp, bottom = 3.dp),
     ) {
         CheckIndicator(completed = task.completed, updating = updating, layout = layout)
         Spacer(Modifier.width(layout.rowPadding))
@@ -443,7 +453,7 @@ private fun TaskRow(
             Text(
                 text = task.title,
                 fontSize = layout.taskSp,
-                lineHeight = layout.taskSp * 1.15f,
+                lineHeight = layout.taskSp * 1.1f,
                 // El título es contenido del usuario: se muestra tal cual.
                 fontWeight = FontWeight.SemiBold,
                 color = if (task.completed) VoltPalette.OnSurfaceVariant else VoltPalette.OnSecondaryContainerStrong,
@@ -454,6 +464,7 @@ private fun TaskRow(
             Text(
                 text = dueLabelText(dueLabel(task.dueDate, today)),
                 fontSize = layout.dueSp,
+                lineHeight = layout.dueSp * 1.1f,
                 color = if (task.completed) VoltPalette.OnSurfaceVariant else VoltPalette.OnSecondaryContainer,
                 maxLines = 1,
             )
