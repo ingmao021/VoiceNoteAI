@@ -28,6 +28,11 @@ export async function buildApp(deps: AppDependencies, options: FastifyServerOpti
   });
   app.get('/openapi.json', { schema: { hide: true } }, async () => app.swagger());
 
+  // El cliente del reloj (Ktor/Android) manda DELETE con un tipo de contenido que Fastify rechaza con
+  // 415 aunque no haya cuerpo. Los tipos desconocidos se aceptan y se ignoran: las rutas con cuerpo
+  // (POST/PATCH) siguen exigiendo JSON válido y fallan con 400 en la validación del esquema.
+  app.addContentTypeParser('*', { parseAs: 'string' }, (_req, _body, done) => done(null, undefined));
+
   app.setErrorHandler((error, req, reply) => {
     const http = mapError(error);
     if (http.status >= 500) {
