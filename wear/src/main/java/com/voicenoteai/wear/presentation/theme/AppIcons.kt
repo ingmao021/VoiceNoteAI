@@ -42,6 +42,35 @@ object AppIcons {
         )
         .build()
 
+    /** Chevron de trazo redondeado hacia arriba (gemelo de [ChevronDownRounded]). */
+    val ChevronUpRounded: ImageVector = ImageVector.Builder("ChevronUpRounded", 24.dp, 24.dp, 24f, 24f)
+        .addPath(
+            PathParser().parsePathString("M6.5,15L12,9.5L17.5,15").toNodes(),
+            stroke = SolidColor(Color.White),
+            strokeLineWidth = 2.6f,
+            strokeLineCap = StrokeCap.Round,
+            strokeLineJoin = StrokeJoin.Round,
+        )
+        .build()
+
+    val Plus: ImageVector = ImageVector.Builder("Plus", 24.dp, 24.dp, 24f, 24f)
+        .addPath(
+            PathParser().parsePathString("M12,6V18M6,12H18").toNodes(),
+            stroke = SolidColor(Color.White),
+            strokeLineWidth = 2.6f,
+            strokeLineCap = StrokeCap.Round,
+        )
+        .build()
+
+    val Minus: ImageVector = ImageVector.Builder("Minus", 24.dp, 24.dp, 24f, 24f)
+        .addPath(
+            PathParser().parsePathString("M6,12H18").toNodes(),
+            stroke = SolidColor(Color.White),
+            strokeLineWidth = 2.6f,
+            strokeLineCap = StrokeCap.Round,
+        )
+        .build()
+
     val History = icon(
         "History",
         "M13,3c-4.97,0 -9,4.03 -9,9H1l3.89,3.89 0.07,0.14L9,12H6c0,-3.87 3.13,-7 7,-7s7,3.13 7,7 -3.13,7 -7,7c-1.93,0 -3.68,-0.79 -4.94,-2.06l-1.42,1.42C8.27,19.99 10.51,21 13,21c4.97,0 9,-4.03 9,-9s-4.03,-9 -9,-9zM12,8v5l4.28,2.54 0.72,-1.21 -3.5,-2.08V8H12z",

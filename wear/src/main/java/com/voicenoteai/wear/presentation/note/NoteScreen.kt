@@ -8,6 +8,23 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.foundation.layout.requiredSize
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import com.voicenoteai.wear.presentation.theme.IdleHalo
+import com.voicenoteai.wear.presentation.theme.popIn
+import com.voicenoteai.wear.presentation.theme.reduceMotion
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
@@ -27,6 +44,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -77,14 +95,14 @@ import com.voicenoteai.wear.presentation.theme.VoiceNoteAITheme
  * §4): el elemento principal siempre en el mismo sitio y el texto debajo, dentro del cuadrado inscrito.
  */
 private class Layout(val side: Dp, fontScale: Float) {
-    val button: Dp = side * 0.43f
-    val buttonTop: Dp = side * 0.115f
+    val button: Dp = side * 0.40f
+    val buttonTop: Dp = side * 0.13f
     val textTop: Dp = side * 0.59f
     /** Con la fuente ampliada el texto necesita algo más de ancho para no acabar en puntos suspensivos. */
     private val compact = side < 225.dp && fontScale >= 1.25f
     val textWidth: Dp = side * 0.72f
     /** Solo para textos de una línea o anclados arriba: más ancho sin rozar la circunferencia. */
-    val wideTextWidth: Dp = if (compact) side * 0.84f else textWidth
+    val wideTextWidth: Dp = side * 0.86f
 
     /** Hueco real del botón del borde (48 dp + margen inferior + aire): nada de texto lo invade. */
     val edgeReserve: Dp = 55.dp
@@ -97,7 +115,7 @@ private class Layout(val side: Dp, fontScale: Float) {
 
     /** Breakpoint de 225 dp (PRD §7.7). */
     private val large = side >= 225.dp
-    val primarySp: TextUnit = if (large) 16.sp else 15.sp
+    val primarySp: TextUnit = if (large) 15.sp else 14.sp
     val secondarySp: TextUnit = if (large) 12.sp else 11.sp
 }
 
@@ -121,7 +139,10 @@ fun NoteScreen(
             targetState = state,
             // Solo cambiar de estado anima; los cambios dentro de un estado (nivel, etapa) no.
             contentKey = { it::class },
-            transitionSpec = { fadeIn(tween(200)) togetherWith fadeOut(tween(150)) },
+            transitionSpec = {
+                (fadeIn(tween(240, delayMillis = 60)) + scaleIn(tween(300, delayMillis = 60), initialScale = 0.9f)) togetherWith
+                    (fadeOut(tween(120)) + scaleOut(tween(160), targetScale = 1.04f))
+            },
             modifier = Modifier.fillMaxSize(),
             label = "state",
         ) { current ->
@@ -169,6 +190,8 @@ private fun StateLayout(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(2.dp),
                 modifier = Modifier
+                    // Sin tope de alto: el texto envuelve a sus líneas en vez de truncarse en una sola.
+                    .wrapContentHeight(align = Alignment.Top, unbounded = true)
                     .widthIn(max = textWidth)
                     .testTag("noteText"),
                 content = text,
@@ -182,7 +205,9 @@ private fun StateLayout(
 private fun IdleContent(layout: Layout, starting: Boolean, onMainButton: () -> Unit, onOpenHistory: () -> Unit) {
     StateLayout(
         layout,
-        textWidth = layout.wideTextWidth,
+        // Más abajo que en los otros estados: libra las ondas del botón y queda centrado entre él y el asa.
+        textTop = layout.side * 0.62f,
+        textWidth = layout.side * 0.80f,
         edge = {
             if (!starting) {
                 BottomTab(
@@ -192,22 +217,30 @@ private fun IdleContent(layout: Layout, starting: Boolean, onMainButton: () -> U
                         .align(Alignment.BottomCenter)
                         .testTag("edgeAction"),
                 ) {
-                    EdgeIcon(AppIcons.ChevronUp, size = 18.dp)
-                    EdgeIcon(AppIcons.History, size = 22.dp)
+                    EdgeIcon(AppIcons.ChevronUpRounded, size = 18.dp)
+                    EdgeIcon(AppIcons.History, size = 18.dp)
                 }
             }
         },
         main = {
-            VoltActionButton(
-                diameter = layout.button,
-                onClick = onMainButton,
-                description = stringResource(R.string.idle_record_description),
-                enabled = !starting,
-            ) {
-                Icon(AppIcons.Mic, contentDescription = null, tint = VoltPalette.OnPrimary, modifier = Modifier.size(layout.button * 0.46f))
+            // Las ondas se salen del botón sin cambiar su caja (requiredSize): el centrado no se altera.
+            Box(Modifier.size(layout.button), contentAlignment = Alignment.Center) {
+                if (!starting) IdleHalo(Modifier.requiredSize(layout.button * 1.3f))
+                VoltActionButton(
+                    diameter = layout.button,
+                    onClick = onMainButton,
+                    description = stringResource(R.string.idle_record_description),
+                    enabled = !starting,
+                    modifier = Modifier.popIn(),
+                ) {
+                    Icon(AppIcons.Mic, contentDescription = null, tint = VoltPalette.OnPrimary, modifier = Modifier.size(layout.button * 0.46f))
+                }
             }
         },
-        text = { StatusText(stringResource(R.string.idle_hint), layout.primarySp) },
+        text = {
+            val big = LocalDensity.current.fontScale >= 1.25f
+            StatusText(stringResource(R.string.idle_hint), if (big) layout.primarySp * 0.9f else layout.primarySp)
+        },
     )
 }
 
@@ -280,6 +313,7 @@ private fun ProcessingContent(layout: Layout, stage: ProcessingStage) {
     val description = stringResource(R.string.processing_description)
     StateLayout(
         layout,
+        textTop = layout.textTop - 6.dp,
         main = {
             // Sin verde: no hay nada que pulsar. Anillo indeterminado azul con el micrófono dentro.
             Box(
@@ -288,15 +322,19 @@ private fun ProcessingContent(layout: Layout, stage: ProcessingStage) {
                     .size(layout.button)
                     .semantics { contentDescription = description },
             ) {
-                CircularProgressIndicator(
-                    modifier = Modifier.fillMaxSize(),
-                    colors = ProgressIndicatorDefaults.colors(
-                        indicatorColor = VoltPalette.Secondary,
-                        trackColor = VoltPalette.SurfaceContainerHigh,
-                    ),
-                    strokeWidth = 8.dp,
+                ProcessingSpinner(Modifier.fillMaxSize())
+                val pulse by rememberInfiniteTransition(label = "mic").animateFloat(
+                    initialValue = 0.92f,
+                    targetValue = 1.08f,
+                    animationSpec = infiniteRepeatable(tween(900), RepeatMode.Reverse),
+                    label = "micPulse",
                 )
-                Icon(AppIcons.Mic, contentDescription = null, tint = VoltPalette.Secondary, modifier = Modifier.size(layout.button * 0.38f))
+                Icon(
+                    AppIcons.Mic,
+                    contentDescription = null,
+                    tint = VoltPalette.Secondary,
+                    modifier = Modifier.size(layout.button * 0.38f).scale(if (reduceMotion()) 1f else pulse),
+                )
             }
         },
         text = { StatusText(stringResource(stage.textRes), layout.primarySp, maxLines = 2) },
@@ -318,11 +356,15 @@ private fun SuccessContent(layout: Layout, title: String) {
 
         Box(Modifier.fillMaxSize()) {
             Box(
+                Modifier.align(Alignment.TopCenter).padding(top = layout.buttonTop).size(badge),
+            ) { SuccessBurst(Modifier.requiredSize(badge * 1.7f).align(Alignment.Center)) }
+            Box(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
                     .align(Alignment.TopCenter)
                     .padding(top = layout.buttonTop)
                     .size(badge)
+                    .popIn(from = 0.4f)
                     .clip(CircleShape)
                     .background(VoltPalette.Primary)
                     .testTag("noteMain"),
@@ -345,7 +387,7 @@ private fun SuccessContent(layout: Layout, title: String) {
                     maxLines = 2,
                     modifier = Modifier.testTag("noteTitle"),
                 )
-                SavedBadge(layout)
+                SavedBadge(layout, Modifier.popIn(delayMs = 260, from = 0.6f))
             }
         }
     }
@@ -353,15 +395,15 @@ private fun SuccessContent(layout: Layout, title: String) {
 
 /** Píldora «Guardado», con el icono y el texto centrados en el mismo eje. */
 @Composable
-private fun SavedBadge(layout: Layout) {
+private fun SavedBadge(layout: Layout, modifier: Modifier = Modifier) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(4.dp),
-        modifier = Modifier
+        modifier = modifier
             .clip(RoundedCornerShape(percent = 50))
             .background(VoltPalette.SurfaceContainer)
             .testTag("notePill")
-            .padding(horizontal = 14.dp, vertical = 5.dp),
+            .padding(horizontal = 10.dp, vertical = 5.dp),
     ) {
         Icon(AppIcons.Check, contentDescription = null, tint = VoltPalette.Primary, modifier = Modifier.size(16.dp))
         Text(
@@ -371,6 +413,58 @@ private fun SavedBadge(layout: Layout) {
             color = VoltPalette.Primary,
             maxLines = 1,
         )
+    }
+}
+
+/** Onda de confirmación: un anillo verde que sale del check al guardar y se apaga, una sola vez. */
+@Composable
+private fun SuccessBurst(modifier: Modifier = Modifier) {
+    if (reduceMotion()) return
+    val p = remember { Animatable(0f) }
+    LaunchedEffect(Unit) { p.animateTo(1f, tween(750, easing = FastOutSlowInEasing)) }
+    Canvas(modifier) {
+        val v = p.value
+        val r = size.minDimension / 2f
+        drawCircle(
+            VoltPalette.Primary.copy(alpha = 0.55f * (1f - v)),
+            radius = r * (0.58f + 0.42f * v),
+            style = Stroke(4.dp.toPx() * (1f - 0.7f * v)),
+        )
+    }
+}
+
+/** Anillo de carga: arco con degradado azul→verde que gira sobre su pista; con movimiento reducido, estático. */
+@Composable
+private fun ProcessingSpinner(modifier: Modifier = Modifier) {
+    val spin by rememberInfiniteTransition(label = "spinner").animateFloat(
+        initialValue = 0f,
+        targetValue = 360f,
+        animationSpec = infiniteRepeatable(tween(1100, easing = LinearEasing)),
+        label = "spin",
+    )
+    val angle = if (reduceMotion()) 0f else spin
+    Canvas(modifier) {
+        val stroke = 8.dp.toPx()
+        val inset = stroke / 2
+        val arc = Size(size.width - stroke, size.height - stroke)
+        val style = Stroke(stroke, cap = StrokeCap.Round)
+        drawArc(VoltPalette.SurfaceContainerHigh, 0f, 360f, false, Offset(inset, inset), arc, style = style)
+        rotate(angle, pivot = center) {
+            drawArc(
+                brush = Brush.sweepGradient(
+                    0f to Color.Transparent,
+                    0.75f to VoltPalette.Secondary,
+                    1f to VoltPalette.Primary,
+                    center = center,
+                ),
+                startAngle = 0f,
+                sweepAngle = 270f,
+                useCenter = false,
+                topLeft = Offset(inset, inset),
+                size = arc,
+                style = style,
+            )
+        }
     }
 }
 
@@ -411,6 +505,7 @@ private fun ErrorContent(layout: Layout, state: NoteUiState.Error, onAction: (Er
         layout,
         textTop = layout.buttonTop + badge + 6.dp,
         textBottom = textBottom,
+        textWidth = layout.wideTextWidth,
         edge = {
             EdgeAction(
                 onClick = { onAction(state.action) },
@@ -419,7 +514,7 @@ private fun ErrorContent(layout: Layout, state: NoteUiState.Error, onAction: (Er
                     .align(Alignment.BottomCenter)
                     .testTag("edgeAction"),
                 style = EdgeStyle.Error,
-                width = 128.dp,
+                width = 112.dp,
             ) {
                 if (retry) EdgeIcon(AppIcons.Refresh, EdgeStyle.Error, size = 20.dp)
                 EdgeLabel(stringResource(state.action.labelRes), EdgeStyle.Error)
@@ -430,7 +525,11 @@ private fun ErrorContent(layout: Layout, state: NoteUiState.Error, onAction: (Er
                 Icon(AppIcons.Warning, contentDescription = null, tint = VoltPalette.Error, modifier = Modifier.size(badge * 0.46f))
             }
         },
-        text = { StatusText(stringResource(state.messageRes), layout.primarySp, maxLines = layout.errorLines) },
+        text = {
+            // Con la fuente del sistema muy ampliada el mensaje baja un punto para caber entero.
+            val size = if (fontScale >= 1.25f) layout.primarySp * 0.9f else layout.primarySp
+            StatusText(stringResource(state.messageRes), size, maxLines = layout.errorLines)
+        },
     )
 }
 

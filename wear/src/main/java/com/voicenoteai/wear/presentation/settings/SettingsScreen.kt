@@ -1,5 +1,22 @@
 package com.voicenoteai.wear.presentation.settings
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.ui.draw.scale
+import com.voicenoteai.wear.presentation.theme.VoltSwitch
+import com.voicenoteai.wear.presentation.theme.popIn
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -10,6 +27,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -61,20 +79,21 @@ fun SettingsScreen(
             LazyColumn(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(6.dp),
-                contentPadding = PaddingValues(top = side * 0.14f, bottom = side * 0.30f),
+                contentPadding = PaddingValues(top = side * 0.14f, bottom = side * 0.32f),
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(horizontal = side * 0.13f)
+                    .padding(horizontal = side * 0.10f)
                     .testTag("settingsPage"),
             ) {
                 item {
                     Text(
                         text = stringResource(R.string.settings_title),
-                        fontSize = 15.sp,
+                        fontSize = 16.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = VoltPalette.OnSurface,
                         textAlign = TextAlign.Center,
                         maxLines = 1,
+                        modifier = Modifier.popIn(from = 0.9f),
                     )
                 }
                 item { SectionTitle(R.string.settings_section_feedback) }
@@ -82,6 +101,7 @@ fun SettingsScreen(
                     ToggleRow(
                         label = stringResource(R.string.settings_haptics),
                         value = stringResource(if (hapticsEnabled) R.string.settings_on else R.string.settings_off),
+                        checked = hapticsEnabled,
                         onClick = onToggleHaptics,
                         tag = "hapticsRow",
                     )
@@ -99,6 +119,7 @@ fun SettingsScreen(
                     ToggleRow(
                         label = stringResource(R.string.settings_confirm_delete),
                         value = stringResource(if (confirmDelete) R.string.settings_on else R.string.settings_off),
+                        checked = confirmDelete,
                         onClick = onToggleConfirmDelete,
                         tag = "confirmDeleteRow",
                     )
@@ -112,12 +133,24 @@ fun SettingsScreen(
                     )
                 }
             }
+            // Las filas se desvanecen hacia el negro bajo el asa, en vez de cortarse contra ella.
+            Box(
+                Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .height(side * 0.26f)
+                    .background(
+                        androidx.compose.ui.graphics.Brush.verticalGradient(
+                            listOf(androidx.compose.ui.graphics.Color.Transparent, VoltPalette.Background),
+                        ),
+                    ),
+            )
             BottomTab(
                 onClick = onClose,
                 description = stringResource(R.string.settings_back),
                 modifier = Modifier.align(Alignment.BottomCenter).testTag("edgeAction"),
             ) {
-                EdgeIcon(AppIcons.ChevronDown, size = 24.dp)
+                EdgeIcon(AppIcons.ChevronDownRounded, size = 20.dp)
             }
         }
     }
@@ -132,38 +165,66 @@ private fun AlertMode.labelRes(): Int = when (this) {
 @Composable
 private fun SectionTitle(textRes: Int) {
     Text(
-        text = stringResource(textRes),
+        text = stringResource(textRes).uppercase(),
         fontSize = 11.sp,
+        fontWeight = FontWeight.SemiBold,
+        letterSpacing = 1.2.sp,
         color = VoltPalette.Secondary,
         textAlign = TextAlign.Center,
         maxLines = 1,
-        modifier = Modifier.padding(top = 4.dp),
+        modifier = Modifier.padding(top = 8.dp, bottom = 0.dp),
     )
 }
 
-/** Fila de una opción que se alterna o cicla al tocarla: etiqueta arriba, valor actual debajo. */
+/** Cambio de valor con deslizamiento vertical corto: se nota que cambió sin distraer. */
+private fun valueSwap() =
+    (slideInVertically(tween(220)) { it / 2 } + fadeIn(tween(220))) togetherWith
+        (slideOutVertically(tween(160)) { -it / 2 } + fadeOut(tween(120)))
+
+/** Se comprime al pulsar: la misma respuesta táctil que el botón principal. */
 @Composable
-private fun ToggleRow(label: String, value: String, onClick: () -> Unit, tag: String) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
+private fun pressScale(source: MutableInteractionSource): Float {
+    val pressed by source.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (pressed) 0.95f else 1f,
+        animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
+        label = "press",
+    )
+    return scale
+}
+
+/**
+ * Fila de una opción que se alterna o cicla al tocarla: etiqueta y valor actual a la izquierda y, si
+ * es un interruptor ([checked] no nulo), la perilla animada a la derecha. Alto mínimo de 52 dp.
+ */
+@Composable
+private fun ToggleRow(label: String, value: String, onClick: () -> Unit, tag: String, checked: Boolean? = null) {
+    val source = remember { MutableInteractionSource() }
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = 44.dp)
-            .clip(RoundedCornerShape(percent = 50))
-            .background(VoltPalette.SecondaryContainer)
-            .clickable(onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 5.dp)
+            .heightIn(min = 52.dp)
+            .scale(pressScale(source))
+            .clip(RoundedCornerShape(24.dp))
+            .background(VoltPalette.SurfaceContainer)
+            .clickable(interactionSource = source, indication = null, onClick = onClick)
+            .padding(start = 16.dp, end = 12.dp, top = 6.dp, bottom = 6.dp)
             .testTag(tag),
-        verticalArrangement = Arrangement.Center,
     ) {
-        Text(text = label, fontSize = 11.sp, color = VoltPalette.OnSurface, maxLines = 1)
-        Text(
-            text = value,
-            fontSize = 13.sp,
-            fontWeight = FontWeight.SemiBold,
-            color = VoltPalette.OnSurface,
-            maxLines = 1,
-        )
+        Column(Modifier.weight(1f)) {
+            Text(text = label, fontSize = 13.sp, fontWeight = FontWeight.Medium, color = VoltPalette.OnSurface, maxLines = 1)
+            AnimatedContent(targetState = value, transitionSpec = { valueSwap() }, label = "toggleValue") { v ->
+                Text(
+                    text = v,
+                    fontSize = 12.sp,
+                    color = VoltPalette.OnSurfaceVariant,
+                    maxLines = 1,
+                )
+            }
+        }
+        if (checked != null) VoltSwitch(checked)
     }
 }
 
@@ -174,34 +235,47 @@ private fun OptionRow(minutes: Long, onMinus: () -> Unit, onPlus: () -> Unit) {
         horizontalArrangement = Arrangement.SpaceBetween,
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(percent = 50))
-            .background(VoltPalette.SecondaryContainer)
-            .padding(horizontal = 4.dp, vertical = 3.dp),
+            .clip(RoundedCornerShape(26.dp))
+            .background(VoltPalette.SurfaceContainer)
+            .padding(horizontal = 6.dp, vertical = 6.dp),
     ) {
-        StepButton("−", stringResource(R.string.settings_decrease), onMinus, Modifier.testTag("optionMinus"))
-        Text(
-            text = durationLabel(minutes),
-            fontSize = 13.sp,
-            fontWeight = FontWeight.SemiBold,
-            color = VoltPalette.OnSurface,
-            maxLines = 1,
-            modifier = Modifier.testTag("optionValue"),
-        )
-        StepButton("+", stringResource(R.string.settings_increase), onPlus, Modifier.testTag("optionPlus"))
+        StepButton(AppIcons.Minus, stringResource(R.string.settings_decrease), onMinus, Modifier.testTag("optionMinus"))
+        AnimatedContent(
+            targetState = minutes,
+            // Sube al aumentar y baja al disminuir.
+            transitionSpec = {
+                val up = targetState > initialState
+                (slideInVertically(tween(200)) { if (up) it else -it } + fadeIn(tween(200))) togetherWith
+                    (slideOutVertically(tween(160)) { if (up) -it else it } + fadeOut(tween(120)))
+            },
+            label = "minutes",
+        ) { m ->
+            Text(
+                text = durationLabel(m),
+                fontSize = 17.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = VoltPalette.Primary,
+                maxLines = 1,
+                modifier = Modifier.testTag("optionValue"),
+            )
+        }
+        StepButton(AppIcons.Plus, stringResource(R.string.settings_increase), onPlus, Modifier.testTag("optionPlus"))
     }
 }
 
 @Composable
-private fun StepButton(symbol: String, description: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
+private fun StepButton(icon: androidx.compose.ui.graphics.vector.ImageVector, description: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val source = remember { MutableInteractionSource() }
     Box(
         contentAlignment = Alignment.Center,
         modifier = modifier
-            .size(34.dp)
+            .size(40.dp)
+            .scale(pressScale(source))
             .clip(CircleShape)
-            .background(VoltPalette.Background.copy(alpha = 0.5f))
-            .clickable(onClick = onClick)
+            .background(VoltPalette.SecondaryContainer)
+            .clickable(interactionSource = source, indication = null, onClick = onClick)
             .semantics { contentDescription = description },
     ) {
-        Text(text = symbol, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = VoltPalette.OnSurface)
+        androidx.wear.compose.material3.Icon(icon, contentDescription = null, tint = VoltPalette.OnSecondaryContainer, modifier = Modifier.size(18.dp))
     }
 }

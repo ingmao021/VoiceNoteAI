@@ -1,7 +1,11 @@
 package com.voicenoteai.wear.presentation.theme
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.TextStyle
+import androidx.wear.compose.foundation.LocalReduceMotion
+import androidx.wear.compose.material3.LocalTextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -70,11 +74,36 @@ val AppFontFamily = FontFamily(
     Font(R.font.poppins_bold, FontWeight.Bold),
 )
 
-@Composable
-fun VoiceNoteAITheme(content: @Composable () -> Unit) {
-    MaterialTheme(
-        colorScheme = colorScheme,
-        typography = Typography(defaultFontFamily = AppFontFamily),
-        content = content,
+/**
+ * Los estilos de M3 traen su propia familia, así que `defaultFontFamily` no llega a aplicarse: se
+ * reescribe cada estilo con Poppins. Y como los `Text` de la app fijan solo tamaño y peso, el estilo
+ * local también lleva la familia para que ninguno caiga a la fuente del sistema.
+ */
+private fun appTypography(): Typography {
+    val t = Typography()
+    fun TextStyle.poppins() = copy(fontFamily = AppFontFamily)
+    return t.copy(
+        displayLarge = t.displayLarge.poppins(), displayMedium = t.displayMedium.poppins(),
+        displaySmall = t.displaySmall.poppins(), titleLarge = t.titleLarge.poppins(),
+        titleMedium = t.titleMedium.poppins(), titleSmall = t.titleSmall.poppins(),
+        labelLarge = t.labelLarge.poppins(), labelMedium = t.labelMedium.poppins(),
+        labelSmall = t.labelSmall.poppins(), bodyLarge = t.bodyLarge.poppins(),
+        bodyMedium = t.bodyMedium.poppins(), bodySmall = t.bodySmall.poppins(),
+        bodyExtraSmall = t.bodyExtraSmall.poppins(), numeralLarge = t.numeralLarge.poppins(),
+        numeralMedium = t.numeralMedium.poppins(), numeralSmall = t.numeralSmall.poppins(),
     )
 }
+
+@Composable
+fun VoiceNoteAITheme(content: @Composable () -> Unit) {
+    MaterialTheme(colorScheme = colorScheme, typography = appTypography()) {
+        CompositionLocalProvider(
+            LocalTextStyle provides LocalTextStyle.current.merge(TextStyle(fontFamily = AppFontFamily)),
+            content = content,
+        )
+    }
+}
+
+/** `true` si el usuario pidió reducir el movimiento: las animaciones decorativas se omiten. */
+@Composable
+fun reduceMotion(): Boolean = LocalReduceMotion.current

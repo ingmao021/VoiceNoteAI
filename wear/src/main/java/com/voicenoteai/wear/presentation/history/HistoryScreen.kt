@@ -21,8 +21,15 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.ui.graphics.graphicsLayer
+import com.voicenoteai.wear.presentation.theme.popIn
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -30,6 +37,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
@@ -84,8 +92,11 @@ private class HistoryLayout(side: Dp, fontScale: Float) {
     private val compact = !large && fontScale >= 1.25f
 
     /** Las filas quedan dentro del cuadrado inscrito incluso al acercarse al borde inferior. */
-    val horizontal: Dp = side * 0.115f
-    val textWidth: Dp = if (compact) side * 0.80f else side * 0.72f
+    val horizontal: Dp = side * 0.075f
+    val textWidth: Dp = if (compact) side * 0.86f else side * 0.82f
+
+    /** Aire bajo los bloques de estado (cargando/vacío/error); arriba ya los libra la pestaña. */
+    val stateBottom: Dp = side * 0.15f
 
     /** Deja libre la pestaña colgante (3 dp de margen + 34 dp) y un respiro: el contenido cuelga debajo. */
     val edge: Dp = side * 0.24f
@@ -95,21 +106,21 @@ private class HistoryLayout(side: Dp, fontScale: Float) {
     /** Holgura al final de la lista: la última fila puede subir por encima de la curva del bisel. */
     val bottom: Dp = side * 0.20f
 
-    val titleSp: TextUnit = if (large) 16.sp else 15.sp
+    val titleSp: TextUnit = if (large) 16.sp else if (compact) 13.sp else 15.sp
     val taskSp: TextUnit = if (large) 13.sp else 12.sp
-    val dueSp: TextUnit = 11.sp
+    val dueSp: TextUnit = 12.sp
 
     /** El bloque de estado comparte sitio con el botón del borde: se encoge en pantallas pequeñas. */
     val badge: Dp = when {
-        large -> side * 0.34f
-        compact -> side * 0.18f
-        else -> side * 0.29f
+        large -> side * 0.22f
+        compact -> side * 0.15f
+        else -> side * 0.20f
     }
     /** Separación del bloque de estado: se aprieta cuando la fuente ampliada pide más alto. */
     val stateGap: Dp = if (compact) 4.dp else 6.dp
-    val check: Dp = if (large) 26.dp else 24.dp
-    val rowPadding: Dp = 6.dp
-    val rowHeight: Dp = if (large) 42.dp else 38.dp
+    val check: Dp = if (large) 28.dp else 26.dp
+    val rowPadding: Dp = 7.dp
+    val rowHeight: Dp = if (large) 56.dp else 52.dp
 }
 
 /**
@@ -187,7 +198,7 @@ fun HistoryScreen(
                     }
                     .testTag("edgeAction"),
             ) {
-                EdgeIcon(AppIcons.ChevronDownRounded, size = 24.dp)
+                EdgeIcon(AppIcons.ChevronDownRounded, size = 20.dp)
             }
             deleteFor?.let { id ->
                 DeleteConfirm(
@@ -247,6 +258,7 @@ private fun ColumnScope.HistoryList(
         )
     }
 
+    val seen = remember { mutableSetOf<String>() }
     LazyColumn(
         modifier = Modifier
             .fillMaxWidth()
@@ -255,15 +267,21 @@ private fun ColumnScope.HistoryList(
         // La lista llega hasta el borde de la pantalla (nada de franja negra tapando filas); la
         // holgura va en el contenido, así la última fila se puede desplazar hasta quedar visible.
         contentPadding = PaddingValues(top = 2.dp, bottom = layout.bottom),
-        verticalArrangement = Arrangement.spacedBy(3.dp),
+        verticalArrangement = Arrangement.spacedBy(5.dp),
     ) {
-        items(items = state.tasks, key = { it.id }) { task ->
+        itemsIndexed(items = state.tasks, key = { _, task -> task.id }) { index, task ->
+            // Solo la primera vez que aparece cada fila: al volver con el scroll no se repite la entrada.
+            val first = remember(task.id) { seen.add(task.id) }
             SwipeToDeleteRow(
                 onDelete = { onDelete(task.id) },
                 onRemind = { onRemind(task.id) },
                 layout = layout,
                 returnAfterDelete = confirmDelete,
-                modifier = Modifier.padding(horizontal = layout.horizontal),
+                canRemind = !task.completed,
+                modifier = Modifier
+                    .animateItem()
+                    .then(if (first) Modifier.popIn(delayMs = (index * 55).coerceAtMost(220), from = 0.9f) else Modifier)
+                    .padding(horizontal = layout.horizontal),
             ) {
                 TaskRow(
                     task = task,
@@ -287,6 +305,7 @@ private fun SwipeToDeleteRow(
     onRemind: () -> Unit,
     layout: HistoryLayout,
     returnAfterDelete: Boolean,
+    canRemind: Boolean,
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit,
 ) {
@@ -294,7 +313,13 @@ private fun SwipeToDeleteRow(
     val scope = rememberCoroutineScope()
     val density = LocalDensity.current
     val threshold = with(density) { 72.dp.toPx() }
-    val maxRight = threshold * 1.6f
+    // Una tarea terminada no admite recordatorio: no se puede deslizar a la derecha.
+    val maxRight = if (canRemind) threshold * 1.6f else 0f
+    // El gesto se crea una sola vez: los callbacks se leen siempre en su versión vigente.
+    val currentOnDelete by rememberUpdatedState(onDelete)
+    val currentOnRemind by rememberUpdatedState(onRemind)
+    val currentReturn by rememberUpdatedState(returnAfterDelete)
+    val currentMaxRight by rememberUpdatedState(maxRight)
 
     Box(modifier = modifier.fillMaxWidth()) {
         if (offset.value > 0f) {
@@ -343,17 +368,17 @@ private fun SwipeToDeleteRow(
                         onHorizontalDrag = { change, dragAmount ->
                             change.consume()
                             scope.launch {
-                                offset.snapTo((offset.value + dragAmount).coerceIn(-threshold * 1.6f, maxRight))
+                                offset.snapTo((offset.value + dragAmount).coerceIn(-threshold * 1.6f, currentMaxRight))
                             }
                         },
                         onDragEnd = {
                             scope.launch {
                                 if (offset.value <= -threshold) {
-                                    onDelete()
+                                    currentOnDelete()
                                     // Con confirmación la fila sigue en la lista: vuelve a su sitio.
-                                    if (returnAfterDelete) offset.animateTo(0f)
-                                } else if (offset.value >= threshold) {
-                                    onRemind()
+                                    if (currentReturn) offset.animateTo(0f)
+                                } else if (offset.value >= threshold && currentMaxRight > 0f) {
+                                    currentOnRemind()
                                     offset.animateTo(0f)
                                 } else {
                                     offset.animateTo(0f)
@@ -429,7 +454,18 @@ private fun TaskRow(
 ) {
     val shape = RoundedCornerShape(percent = 50)
     // Pendiente = tonal azul; hecha = tonal oscuro y tachada. Ninguna usa verde sólido.
-    val surface = if (task.completed) VoltPalette.SurfaceContainer else VoltPalette.SecondaryContainer
+    val surface by animateColorAsState(
+        if (task.completed) VoltPalette.SurfaceContainer else VoltPalette.SecondaryContainer,
+        label = "rowSurface",
+    )
+    val titleColor by animateColorAsState(
+        if (task.completed) VoltPalette.OnSurfaceVariant else VoltPalette.OnSecondaryContainerStrong,
+        label = "rowTitle",
+    )
+    val dueColor by animateColorAsState(
+        if (task.completed) VoltPalette.OnSurfaceVariant else VoltPalette.OnSecondaryContainer,
+        label = "rowDue",
+    )
 
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -445,7 +481,7 @@ private fun TaskRow(
                 role = Role.Checkbox,
                 onValueChange = { onToggle(task.id, it) },
             )
-            .padding(start = layout.rowPadding, end = 14.dp, top = 3.dp, bottom = 3.dp),
+            .padding(start = layout.rowPadding, end = 14.dp, top = 4.dp, bottom = 4.dp),
     ) {
         CheckIndicator(completed = task.completed, updating = updating, layout = layout)
         Spacer(Modifier.width(layout.rowPadding))
@@ -456,7 +492,7 @@ private fun TaskRow(
                 lineHeight = layout.taskSp * 1.1f,
                 // El título es contenido del usuario: se muestra tal cual.
                 fontWeight = FontWeight.SemiBold,
-                color = if (task.completed) VoltPalette.OnSurfaceVariant else VoltPalette.OnSecondaryContainerStrong,
+                color = titleColor,
                 textDecoration = if (task.completed) TextDecoration.LineThrough else null,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
@@ -465,7 +501,7 @@ private fun TaskRow(
                 text = dueLabelText(dueLabel(task.dueDate, today)),
                 fontSize = layout.dueSp,
                 lineHeight = layout.dueSp * 1.1f,
-                color = if (task.completed) VoltPalette.OnSurfaceVariant else VoltPalette.OnSecondaryContainer,
+                color = dueColor,
                 maxLines = 1,
             )
         }
@@ -474,24 +510,33 @@ private fun TaskRow(
 
 @Composable
 private fun CheckIndicator(completed: Boolean, updating: Boolean, layout: HistoryLayout) {
-    val base = Modifier
-        .size(layout.check)
-        .clip(CircleShape)
-        .alpha(if (updating) 0.5f else 1f)
+    // 0 = aro azul vacío, 1 = círculo verde oscuro con el check; el muelle da el pequeño rebote.
+    val fill by animateFloatAsState(
+        targetValue = if (completed) 1f else 0f,
+        animationSpec = spring(dampingRatio = 0.55f, stiffness = Spring.StiffnessMedium),
+        label = "checkFill",
+    )
+    val shape = CircleShape
     Box(
         contentAlignment = Alignment.Center,
-        modifier = if (completed) {
-            base.background(VoltPalette.PrimaryContainer)
-        } else {
-            base.border(2.dp, VoltPalette.Secondary, CircleShape)
-        },
+        modifier = Modifier
+            .size(layout.check)
+            .alpha(if (updating) 0.5f else 1f)
+            .clip(shape)
+            .background(VoltPalette.PrimaryContainer.copy(alpha = fill.coerceIn(0f, 1f)))
+            .border(2.dp, VoltPalette.Secondary.copy(alpha = (1f - fill).coerceIn(0f, 1f)), shape),
     ) {
-        if (completed) {
+        if (fill > 0.02f) {
             Icon(
                 AppIcons.Check,
                 contentDescription = null,
                 tint = VoltPalette.Primary,
-                modifier = Modifier.size(layout.check * 0.6f),
+                modifier = Modifier
+                    .size(layout.check * 0.6f)
+                    .graphicsLayer {
+                        scaleX = fill
+                        scaleY = fill
+                    },
             )
         }
     }
@@ -579,12 +624,40 @@ private fun ColumnScope.ErrorContent(
             modifier = Modifier.testTag("stateTitle"),
             maxLines = 3,
         )
-        StateText(
-            stringResource(hint),
-            layout.dueSp,
-            modifier = Modifier.testTag("stateHint"),
-            color = VoltPalette.OnSurfaceVariant,
-        )
+        if (state.retryable) {
+            // Acción clara: una píldora verde con el icono de recargar, en lugar de un texto suelto.
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
+                modifier = Modifier
+                    .heightIn(min = 36.dp)
+                    .clip(RoundedCornerShape(percent = 50))
+                    .background(VoltPalette.Primary)
+                    .padding(horizontal = 16.dp)
+                    .testTag("stateHint"),
+            ) {
+                Icon(
+                    AppIcons.Refresh,
+                    contentDescription = null,
+                    tint = VoltPalette.OnPrimary,
+                    modifier = Modifier.size(16.dp),
+                )
+                Text(
+                    text = stringResource(R.string.history_retry_short),
+                    fontSize = layout.taskSp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = VoltPalette.OnPrimary,
+                    maxLines = 1,
+                )
+            }
+        } else {
+            StateText(
+                stringResource(hint),
+                layout.dueSp,
+                modifier = Modifier.testTag("stateHint"),
+                color = VoltPalette.OnSurfaceVariant,
+            )
+        }
     }
 }
 
@@ -601,13 +674,15 @@ private fun ColumnScope.CenteredState(
             .weight(1f)
             // El botón del borde está arriba y la columna ya lo esquiva: se equilibra con el mismo hueco
             // abajo para que el bloque quede en el centro real del círculo y no roce el bisel.
-            .padding(bottom = layout.edge),
+            .padding(bottom = layout.stateBottom),
         contentAlignment = Alignment.Center,
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(layout.stateGap),
             modifier = modifier
+                // Sin tope de alto: si el texto necesita más líneas las usa, no se corta.
+                .wrapContentHeight(align = Alignment.CenterVertically, unbounded = true)
                 .widthIn(max = layout.textWidth)
                 .testTag("historyState"),
             content = content,

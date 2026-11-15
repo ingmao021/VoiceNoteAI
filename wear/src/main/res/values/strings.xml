@@ -41,8 +41,9 @@
     <string name="history_swipe_description">Desliza hacia arriba para ver el historial</string>
     <string name="history_loading">Cargando…</string>
     <string name="history_empty">Aún no hay tareas</string>
-    <string name="history_empty_hint">Desliza abajo para volver</string>
-    <string name="history_retry">Toca para reintentar</string>
+    <string name="history_empty_hint">Desliza abajo</string>
+    <string name="history_retry">Reintentar</string>
+    <string name="history_retry_short">Reintentar</string>
     <string name="history_delete_failed">No pude eliminar</string>
     <string name="history_delete_action">Eliminar</string>
     <string name="history_reminder_set">Aviso programado</string>
