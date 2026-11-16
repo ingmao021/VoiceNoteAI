@@ -14,7 +14,8 @@ class PreferencesUserSettings(context: Context) : UserSettings {
     private val _haptics = MutableStateFlow(prefs.getBoolean(KEY_HAPTICS, true))
     override val hapticsEnabled: StateFlow<Boolean> = _haptics.asStateFlow()
 
-    private val _confirmDelete = MutableStateFlow(prefs.getBoolean(KEY_CONFIRM_DELETE, false))
+    // Activada de fábrica: borrar es irreversible y un deslizamiento accidental es fácil en el reloj.
+    private val _confirmDelete = MutableStateFlow(prefs.getBoolean(KEY_CONFIRM_DELETE, true))
     override val confirmDelete: StateFlow<Boolean> = _confirmDelete.asStateFlow()
 
     private val _alertMode = MutableStateFlow(readAlertMode(prefs.getString(KEY_ALERT_MODE, null)))

@@ -26,7 +26,7 @@ fun HistoryRoute(
     active: Boolean = true,
     reminderMinutes: Long = ReminderSettings.DEFAULT_MINUTES,
     hapticsEnabled: Boolean = true,
-    confirmDelete: Boolean = false,
+    confirmDelete: Boolean = true,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
