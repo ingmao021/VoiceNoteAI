@@ -289,6 +289,25 @@ curl -X PATCH https://voicenoteai-backend.onrender.com/v1/tasks/MTIzNDU2Nzg5 \
 
 La especificación completa está en `GET /openapi.json`.
 
+## Video de presentación
+
+`npm run demo` regenera `output/demo.webm` (1080 × 1920, 30 fps, VP9 + Opus, unos 44 s). La app es nativa, así que
+no hay nada que abrir en un navegador: el video graba con Playwright una **réplica web** de la interfaz
+(`demo/web/`, con los mismos colores, textos, iconos, fuente y animaciones que el código Compose y datos simulados) y
+la monta en el mockup del reloj con ffmpeg. Si cambias la UI de `wear/`, actualiza también la réplica.
+
+```sh
+npm install
+npm run demo:setup   # una sola vez: descarga Chromium para Playwright
+npm run demo         # graba (scripts/record-demo.ts) → compone (compose-demo.ts) → verifica (verify-demo.ts)
+```
+
+`npm run screenshots` genera además 8 capturas verticales (1080 × 1920, estilo App Store / Play Store) en `output/screenshots/`.
+
+Entradas: `wear/src/source/assets/mockup-watch.png` y `audio.mp3`. `npm run demo:serve` abre la réplica para probarla a mano
+y `npm run demo:test-frame` genera un fotograma de calibración del área de pantalla. Los archivos intermedios y los
+fotogramas de revisión quedan en `output/.work/` (ignorado por git).
+
 ## Estructura del proyecto
 
 ```
@@ -311,6 +330,8 @@ VoiceNoteAI/
 │   ├── src/main/                  Arranque y composición
 │   ├── scripts/                   Obtención del refresh token de Google
 │   └── test/                      Pruebas (Vitest)
+├── demo/web/                      Réplica web de la UI para grabar el video (`npm run demo`)
+├── scripts/                       Grabación, composición y verificación del video
 ├── docs/
 │   ├── PRD.md                     Definición del producto
 │   ├── propuesta_diseño.png       Diseño de referencia
