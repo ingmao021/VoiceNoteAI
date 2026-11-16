@@ -413,7 +413,7 @@ La tipografía **Poppins** incluida en `wear/src/main/res/font/` se distribuye b
 
 ## 👤 Autor y contacto
 
-**Anderson**, aprendiz SENA (ficha 3336175).
+**Anderson**
 
 - GitHub: [@ingmao021](https://github.com/ingmao021)
 - Repositorio: [github.com/ingmao021/VoiceNoteAI](https://github.com/ingmao021/VoiceNoteAI)
