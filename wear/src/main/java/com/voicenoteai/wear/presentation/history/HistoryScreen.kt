@@ -143,7 +143,7 @@ fun HistoryScreen(
     /** Minutos de antelación del aviso al deslizar a la derecha (se define en Ajustes). */
     reminderMinutes: Long = ReminderSettings.DEFAULT_MINUTES,
     /** `true`: deslizar para borrar pide confirmación antes de eliminar. */
-    confirmDelete: Boolean = false,
+    confirmDelete: Boolean = true,
 ) {
     var deleteFor by remember { mutableStateOf<String?>(null) }
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
